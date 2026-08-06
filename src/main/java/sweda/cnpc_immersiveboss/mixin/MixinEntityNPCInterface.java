@@ -203,6 +203,7 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
         }
 
         String raw = (hitPhysicalBone != null) ? hitPhysicalBone : hitDetectableBone;
+        if (raw == null) return; // ray missed every OBB — leave hitboxName null
         cnpc_multihitbox$lastHitboxName = GeoHitboxDef.baseBoneName(raw);
     }
 
