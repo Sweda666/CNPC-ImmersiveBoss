@@ -1,5 +1,6 @@
 package sweda.cnpc_immersiveboss.event;
 
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -38,10 +39,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ProjectileOBBListener {
 
-    /** Tridents bounce back at this fraction of their incoming velocity. */
-    private static final double TRIDENT_BOUNCE_FACTOR = 0.1;
+    /** Tridents bounce back at this fraction of their incoming velocity (readable, snappy). */
+    private static final double TRIDENT_BOUNCE_FACTOR = 0.45;
     /** Ticks a trident keeps its "bounced" flag, preventing re-hits while flying back out. */
-    private static final long BOUNCE_FLAG_TICKS = 100;
+    private static final long BOUNCE_FLAG_TICKS = 15;
     /** Server-side: UUID → tick of last trident bounce. Prevents re-damage/re-bounce while the trident is still inside the boss. */
     private static final Map<UUID, Long> BOUNCED_TRIDENTS = new ConcurrentHashMap<>();
 
@@ -86,20 +87,16 @@ public class ProjectileOBBListener {
             return;
         }
 
-        if (proj instanceof ThrownTrident && !proj.level().isClientSide) {
-            // Vanilla would zero the trident's velocity and leave it hanging inside the boss,
-            // where the tick scan below used to discard it. Instead: damage the hitbox and
-            // bounce the trident back. Cancelling also prevents vanilla from double-damaging.
+        if (proj instanceof ThrownTrident) {
+            // The server drives the whole bounce. The client cancels too so its
+            // vanilla hitEntity can't double-play sounds or fight the server motion.
             event.setCanceled(true);
-            long tick = proj.level().getGameTime();
-            Long lastBounce = BOUNCED_TRIDENTS.get(proj.getUUID());
-            if (lastBounce == null || tick - lastBounce > BOUNCE_FLAG_TICKS) {
-                BOUNCED_TRIDENTS.put(proj.getUUID(), tick);
-                applyProjectileDamage(npc, proj, hitBone);
-                proj.setDeltaMovement(proj.getDeltaMovement()
-                    .multiply(-TRIDENT_BOUNCE_FACTOR, -TRIDENT_BOUNCE_FACTOR, -TRIDENT_BOUNCE_FACTOR));
-                proj.level().playSound(null, proj.getX(), proj.getY(), proj.getZ(),
-                    SoundEvents.TRIDENT_HIT, SoundSource.PLAYERS, 1.0F, 1.0F);
+            if (!proj.level().isClientSide) {
+                List<OBB> worldObbs = new ArrayList<>(relObbs.size());
+                for (OBB rel : relObbs.values()) {
+                    worldObbs.add(new OBB(rel.center.add(pos), rel.halfExtents, rel.axisX, rel.axisY, rel.axisZ));
+                }
+                bounceTrident(npc, proj, hitBone, worldObbs);
             }
             return;
         }
@@ -157,17 +154,9 @@ public class ProjectileOBBListener {
                     if (hitBone == null) continue;
 
                     if (proj instanceof ThrownTrident) {
-                        // Never discard a trident. Bounce it once (if it has not bounced already)
-                        // and leave it alone while it flies back out of the boss.
-                        Long lastBounce = BOUNCED_TRIDENTS.get(proj.getUUID());
-                        if (lastBounce == null || tick - lastBounce > BOUNCE_FLAG_TICKS) {
-                            BOUNCED_TRIDENTS.put(proj.getUUID(), tick);
-                            applyProjectileDamage(npc, proj, hitBone);
-                            proj.setDeltaMovement(proj.getDeltaMovement()
-                                .multiply(-TRIDENT_BOUNCE_FACTOR, -TRIDENT_BOUNCE_FACTOR, -TRIDENT_BOUNCE_FACTOR));
-                            proj.level().playSound(null, proj.getX(), proj.getY(), proj.getZ(),
-                                SoundEvents.TRIDENT_HIT, SoundSource.PLAYERS, 1.0F, 1.0F);
-                        }
+                        // Never discard a trident — bounce it once (re-hit guard lives
+                        // inside bounceTrident) and leave it alone while it flies back out.
+                        bounceTrident(npc, proj, hitBone, worldObbs);
                         continue;
                     }
 
@@ -176,6 +165,57 @@ public class ProjectileOBBListener {
                     break;
                 }
             }
+        }
+    }
+
+    /**
+     * Bounces a trident back out of the boss, mimicking vanilla's on-hit response
+     * (immediate damage + TRIDENT_HIT sound) while keeping the mod's bounce-back
+     * gameplay: the trident is snapped out of the hitboxes and flung back along its
+     * incoming path at a readable speed — no slow crawl-through delay.
+     */
+    private static void bounceTrident(EntityNPCInterface npc, Projectile proj, String hitBone, List<OBB> worldObbs) {
+        if (npc instanceof IOBBHolder h) {
+            h.cnpc_immersiveboss$setLastHitboxName(hitBone);
+        }
+
+        // Re-hit guard: while the trident is flying back out, don't bounce it again.
+        long tick = proj.level().getGameTime();
+        Long lastBounce = BOUNCED_TRIDENTS.get(proj.getUUID());
+        if (lastBounce != null && tick - lastBounce <= BOUNCE_FLAG_TICKS) return;
+        BOUNCED_TRIDENTS.put(proj.getUUID(), tick);
+
+        applyProjectileDamage(npc, proj, hitBone);
+
+        Vec3 vel = proj.getDeltaMovement();
+        double speed = vel.length();
+        if (speed > 1e-6) {
+            Vec3 dir = vel.normalize();
+            // Snap the trident back out of the boss's hitboxes so the bounce reads
+            // instantly instead of crawling through the body.
+            Vec3 back = dir.scale(-0.5);
+            AABB box = proj.getBoundingBox();
+            for (int i = 0; i < 6 && !worldObbs.isEmpty(); i++) {
+                boolean inside = false;
+                for (OBB obb : worldObbs) {
+                    if (OBBPhysics.intersects(obb, box)) { inside = true; break; }
+                }
+                if (!inside) break;
+                box = box.move(back);
+            }
+            proj.setPos(box.getCenter());
+            // Reverse and fling back at a readable fraction of the incoming speed.
+            proj.setDeltaMovement(dir.scale(-speed * TRIDENT_BOUNCE_FACTOR));
+            proj.hasImpulse = true; // push the new velocity to clients immediately
+        } else {
+            proj.setDeltaMovement(vel.multiply(-0.1, -0.1, -0.1));
+        }
+
+        proj.level().playSound(null, proj.getX(), proj.getY(), proj.getZ(),
+            SoundEvents.TRIDENT_HIT, SoundSource.PLAYERS, 1.0F, 1.0F);
+        if (proj.level() instanceof ServerLevel sl) {
+            sl.sendParticles(ParticleTypes.CRIT, proj.getX(), proj.getY() + 0.2, proj.getZ(),
+                8, 0.15, 0.15, 0.15, 0.08);
         }
     }
 
