@@ -74,7 +74,6 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
             // Client caches — classes in these branches are only touched client-side,
             // so referencing client-only classes here is dedicated-server safe.
             ClientHitboxData.remove(id);
-            MixinRenderCustomModel.onEntityRemoved(id);
             sweda.cnpc_immersiveboss.client.bossbar.ClientBossBarData.remove(id);
         } else {
             ServerHitboxData.remove(id);

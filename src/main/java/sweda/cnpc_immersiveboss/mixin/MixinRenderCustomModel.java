@@ -4,7 +4,6 @@ import com.goodbird.cnpcgeckoaddon.client.renderer.RenderCustomModel;
 import com.goodbird.cnpcgeckoaddon.entity.EntityCustomModel;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -38,14 +37,6 @@ public abstract class MixinRenderCustomModel {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     @Unique
-    private static final Map<Integer, ResourceLocation> syncedModels = new HashMap<>();
-
-    /** Removes sync state when the NPC is removed — prevents stale model tracking on entity-ID reuse. */
-    public static void onEntityRemoved(int npcId) {
-        syncedModels.remove(npcId);
-    }
-
-    @Unique
     private static int diagFrameCount = 0;
     @Unique
     private static final int DIAG_INTERVAL = 30;
@@ -73,9 +64,7 @@ public abstract class MixinRenderCustomModel {
             ClientHitboxData.put(npcId, animatable.modelResLoc, hitboxDefs);
             // Re-sync whenever the model changes (not just once per entity) — a model
             // switch must also invalidate the server-side fallback defs.
-            ResourceLocation prevModel = syncedModels.get(npcId);
-            if (prevModel == null || !prevModel.equals(animatable.modelResLoc)) {
-                syncedModels.put(npcId, animatable.modelResLoc);
+            if (ClientHitboxData.shouldSyncModel(npcId, animatable.modelResLoc)) {
                 NetworkHandler.sendToServer(new SyncHitboxPacket(npcId, animatable.modelResLoc.toString(), hitboxDefs));
             }
         }

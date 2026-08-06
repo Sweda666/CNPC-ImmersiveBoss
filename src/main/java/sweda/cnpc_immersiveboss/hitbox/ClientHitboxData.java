@@ -16,8 +16,23 @@ public final class ClientHitboxData {
 
     private static final Map<Integer, ResourceLocation> MODELS = new HashMap<>();
     private static final Map<Integer, List<GeoHitboxDef>> DATA = new HashMap<>();
+    /** Models already synced to the server (client → server SyncHitboxPacket state). */
+    private static final Map<Integer, ResourceLocation> SYNCED_MODELS = new HashMap<>();
 
     private ClientHitboxData() {}
+
+    /**
+     * Model-change-aware sync gate: returns true (and records the model) when the
+     * given entity's model has not been synced to the server yet — callers should
+     * then send a fresh SyncHitboxPacket.
+     */
+    public static boolean shouldSyncModel(int entityId, ResourceLocation model) {
+        if (model == null) return false;
+        ResourceLocation prev = SYNCED_MODELS.get(entityId);
+        if (prev != null && prev.equals(model)) return false;
+        SYNCED_MODELS.put(entityId, model);
+        return true;
+    }
 
     public static void put(int entityId, ResourceLocation model, List<GeoHitboxDef> defs) {
         DATA.put(entityId, defs);
@@ -41,5 +56,6 @@ public final class ClientHitboxData {
     public static void remove(int entityId) {
         DATA.remove(entityId);
         MODELS.remove(entityId);
+        SYNCED_MODELS.remove(entityId);
     }
 }
