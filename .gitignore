@@ -23,6 +23,9 @@ run
 # Local launcher script
 startOpenCode..bat
 
+# Local AI-workflow instruction file (not for distribution)
+AGENTS.md
+
 # Stray decompiled scratch file from CustomNPCs (analysis only, not project code)
 noppes/
 

@@ -1,11 +1,7 @@
 package sweda.cnpc_immersiveboss.hitbox;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraft.world.phys.shapes.VoxelShape;
 import noppes.npcs.entity.EntityNPCInterface;
 
 import java.util.Collection;
@@ -20,7 +16,6 @@ import java.util.List;
  *   intersectRay(OBB, ...) — OBB vs ray slab-method
  *   enclosingAABB(...)     — broad-phase / vanilla compatibility AABB
  *   staticFallbackAABB(...)— static AABB from GeoHitboxDef (no animation)
- *   obbMove(...)           — OBB-based movement with world collision
  */
 public final class OBBPhysics {
 
@@ -242,101 +237,7 @@ public final class OBBPhysics {
         return new AABB(minX, minY, minZ, maxX, maxY, maxZ);
     }
 
-    // ── OBB-based movement collision ──────────────────────────────────
-
-    /**
-     * Move a collection of OBBs through the world, resolving block collisions.
-     * Returns actual motion (may be reduced/zeroed by collision).
-     */
-    public static Vec3 obbMove(Collection<OBB> obbs, Vec3 motion, Entity entity, Level level) {
-        if (obbs.isEmpty() || motion.lengthSqr() < 1e-10) return motion;
-
-        Vec3 pos = entity.position();
-
-        // Y-axis
-        double newY = pos.y;
-        if (Math.abs(motion.y) > 1e-7) {
-            newY = collide1D(obbs, 0, motion.y, pos, entity, level);
-        }
-
-        // XZ-axis (at new Y)
-        double newX = pos.x, newZ = pos.z;
-        if (Math.abs(motion.x) > 1e-7 || Math.abs(motion.z) > 1e-7) {
-            Vec3 r = collideXZ(obbs, pos.x, newY, pos.z, motion.x, motion.z, entity, level);
-            newX = r.x; newZ = r.z;
-        }
-
-        return new Vec3(newX - pos.x, newY - pos.y, newZ - pos.z);
-    }
-
-    // ── Internal collision helpers ────────────────────────────────────
+    // ── Misc helpers ──────────────────────────────────────────────────
 
     private static double dot(Vec3 a, Vec3 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
-
-    private static double collide1D(Collection<OBB> obbs, double dx, double dy,
-                                      Vec3 pos, Entity entity, Level level) {
-        if (Math.abs(dy) < 1e-7) return pos.y;
-        double target = pos.y + dy;
-        if (!collidesAt(obbs, pos.x + dx, target, pos.z, entity, level))
-            return target;
-
-        double lo = pos.y, hi = target;
-        for (int i = 0; i < 8; i++) {
-            double mid = (lo + hi) * 0.5;
-            if (collidesAt(obbs, pos.x + dx, mid, pos.z, entity, level))
-                hi = mid;
-            else
-                lo = mid;
-        }
-        return lo;
-    }
-
-    private static Vec3 collideXZ(Collection<OBB> obbs, double x, double y, double z,
-                                    double dx, double dz, Entity entity, Level level) {
-        if (Math.abs(dx) < 1e-7 && Math.abs(dz) < 1e-7) return new Vec3(x, 0, z);
-
-        double tx = x + dx, tz = z + dz;
-        if (!collidesAt(obbs, tx, y, tz, entity, level))
-            return new Vec3(tx, 0, tz);
-
-        // Binary search
-        double loX = x, loZ = z, hiX = tx, hiZ = tz;
-        for (int i = 0; i < 8; i++) {
-            double mx = (loX + hiX) * 0.5, mz = (loZ + hiZ) * 0.5;
-            if (collidesAt(obbs, mx, y, mz, entity, level)) { hiX = mx; hiZ = mz; }
-            else { loX = mx; loZ = mz; }
-        }
-
-        // Slide
-        double sx = loX, sz = loZ;
-        if (Math.abs(dx) > 1e-7 && !collidesAt(obbs, tx, y, loZ, entity, level)) sx = tx;
-        if (Math.abs(dz) > 1e-7 && !collidesAt(obbs, loX, y, tz, entity, level)) sz = tz;
-
-        return new Vec3(sx, 0, sz);
-    }
-
-    private static boolean collidesAt(Collection<OBB> obbs, double x, double y, double z,
-                                        Entity entity, Level level) {
-        Vec3 old = entity.position();
-        Vec3 shift = new Vec3(x - old.x, y - old.y, z - old.z);
-
-        for (OBB obb : obbs) {
-            OBB moved = new OBB(
-                obb.center.add(shift),
-                obb.halfExtents, obb.axisX, obb.axisY, obb.axisZ
-            );
-            AABB broad = enclosingAABB(moved).inflate(0.001);
-            for (BlockPos bp : BlockPos.betweenClosed(
-                (int)Math.floor(broad.minX), (int)Math.floor(broad.minY), (int)Math.floor(broad.minZ),
-                (int)Math.ceil(broad.maxX),  (int)Math.ceil(broad.maxY),  (int)Math.ceil(broad.maxZ)
-            )) {
-                VoxelShape shape = level.getBlockState(bp).getCollisionShape(level, bp);
-                if (shape.isEmpty()) continue;
-                for (AABB bb : shape.toAabbs()) {
-                    if (intersects(moved, bb.move(bp))) return true;
-                }
-            }
-        }
-        return false;
-    }
 }
