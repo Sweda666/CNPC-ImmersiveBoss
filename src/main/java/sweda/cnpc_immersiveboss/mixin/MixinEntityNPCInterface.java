@@ -64,10 +64,14 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
         return cnpc_multihitbox$lastHitboxName;
     }
 
-    /** Clean up all per-entity hitbox state when the entity is removed. */
-    @Inject(method = "remove", at = @At("HEAD"), remap = false)
-    private void cnpc_multihitbox$onRemove(net.minecraft.world.entity.Entity.RemovalReason reason, CallbackInfo ci) {
-        EntityNPCInterface self = (EntityNPCInterface) (Object) this;
+    /**
+     * Purges all per-entity hitbox state (OBBs + static caches).
+     * Called from the remove() injector AND from the tick() fallback, because
+     * some CustomNPCs builds do not override remove() — tick() is guaranteed to
+     * exist (inherited from Entity) so cleanup still happens there.
+     */
+    @Unique
+    private void cnpc_multihitbox$clearEntityState(EntityNPCInterface self) {
         cnpc_multihitbox$boneOBBs.clear();
         int id = self.getId();
         if (self.level().isClientSide) {
@@ -81,10 +85,25 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
         }
     }
 
+    /** Clean up all per-entity hitbox state when the entity is removed.
+     *  Optional (require=0): builds without an EntityNPCInterface.remove override
+     *  skip this; the tick() fallback below covers cleanup for those builds. */
+    @Inject(method = "remove", at = @At("HEAD"), remap = false, require = 0)
+    private void cnpc_multihitbox$onRemove(net.minecraft.world.entity.Entity.RemovalReason reason, CallbackInfo ci) {
+        cnpc_multihitbox$clearEntityState((EntityNPCInterface) (Object) this);
+    }
+
     /** Static hitbox fallback: only when no animated OBBs from client. */
     @Inject(method = "tick", at = @At("TAIL"), remap = false)
     private void cnpc_multihitbox$onTick(CallbackInfo ci) {
         EntityNPCInterface self = (EntityNPCInterface) (Object) this;
+
+        // Entity fully removed from the world (remove() path may not exist as an
+        // override in every CustomNPCs build — tick is the guaranteed fallback).
+        if (self.isRemoved()) {
+            cnpc_multihitbox$clearEntityState(self);
+            return;
+        }
 
         // Dead NPC: drop all OBB collision data immediately — hitbox raycasts,
         // wireframes and entity collision vanish with the death (AABB stays default).
