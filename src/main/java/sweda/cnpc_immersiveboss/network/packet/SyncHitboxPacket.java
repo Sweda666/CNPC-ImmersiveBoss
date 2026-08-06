@@ -1,6 +1,7 @@
 package sweda.cnpc_immersiveboss.network.packet;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkEvent;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
@@ -12,21 +13,29 @@ import java.util.function.Supplier;
 
 /**
  * Syncs parsed hitbox definitions from client to server.
- * Sent once per NPC when its GeckoLib model is first rendered.
+ * Sent once per NPC per model — re-sent when the NPC's GeckoLib model changes.
  * Direction: PLAY_TO_SERVER.
  */
 public class SyncHitboxPacket {
 
     private final int entityId;
+    /** Model these defs were parsed from ("" when unknown). */
+    private final String model;
     private final List<GeoHitboxDef> hitboxes;
 
     public SyncHitboxPacket(int entityId, List<GeoHitboxDef> hitboxes) {
+        this(entityId, "", hitboxes);
+    }
+
+    public SyncHitboxPacket(int entityId, String model, List<GeoHitboxDef> hitboxes) {
         this.entityId = entityId;
+        this.model = model == null ? "" : model;
         this.hitboxes = hitboxes;
     }
 
     public static void encode(SyncHitboxPacket msg, FriendlyByteBuf buf) {
         buf.writeInt(msg.entityId);
+        buf.writeUtf(msg.model);
         buf.writeInt(msg.hitboxes.size());
         for (GeoHitboxDef def : msg.hitboxes) {
             buf.writeUtf(def.boneName);
@@ -45,6 +54,7 @@ public class SyncHitboxPacket {
 
     public static SyncHitboxPacket decode(FriendlyByteBuf buf) {
         int entityId = buf.readInt();
+        String model = buf.readUtf();
         int count = buf.readInt();
         List<GeoHitboxDef> hitboxes = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
@@ -59,12 +69,13 @@ public class SyncHitboxPacket {
                 hitboxes.add(new GeoHitboxDef(name, type.physical, type.render, type.detectable, origin, size, null, null, staticPivot));
             }
         }
-        return new SyncHitboxPacket(entityId, hitboxes);
+        return new SyncHitboxPacket(entityId, model, hitboxes);
     }
 
     public static void handle(SyncHitboxPacket msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            ServerHitboxData.put(msg.entityId, msg.hitboxes);
+            ResourceLocation model = msg.model.isEmpty() ? null : ResourceLocation.tryParse(msg.model);
+            ServerHitboxData.put(msg.entityId, model, msg.hitboxes);
         });
         ctx.get().setPacketHandled(true);
     }

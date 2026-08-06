@@ -66,14 +66,24 @@ public class ProjectileOBBListener {
         Vec3 rayEnd = proj.position();
         Vec3 pos = npc.position();
 
-        String hitBone = testAllOBBs(relObbs, pos, rayStart, rayEnd);
-        if (hitBone == null) {
-            event.setCanceled(true);
+        // Fast projectiles (crossbow bolts) can jump several blocks per tick —
+        // subdivide the segment so thin OBBs are not skipped.
+        String hitBone = testRaySegmented(relObbs, pos, rayStart, rayEnd);
+
+        if (hitBone != null && target instanceof IOBBHolder h) {
+            h.cnpc_immersiveboss$setLastHitboxName(hitBone);
+        }
+
+        // Piercing arrows: vanilla pierce logic applies damage AND keeps the arrow
+        // flying. Never cancel — cancelling skips hitEntity entirely, which makes
+        // the bolt visually pass through the NPC without dealing any damage.
+        if (proj instanceof AbstractArrow arrow && arrow.getPierceLevel() > 0) {
             return;
         }
 
-        if (target instanceof IOBBHolder h) {
-            h.cnpc_immersiveboss$setLastHitboxName(hitBone);
+        if (hitBone == null) {
+            event.setCanceled(true);
+            return;
         }
 
         if (proj instanceof ThrownTrident && !proj.level().isClientSide) {
@@ -143,7 +153,7 @@ public class ProjectileOBBListener {
                     Vec3 rayStart = new Vec3(proj.xo, proj.yo, proj.zo);
                     Vec3 rayEnd = proj.position();
 
-                    String hitBone = testAllOBBs(obbs, pos, rayStart, rayEnd);
+                    String hitBone = testRaySegmented(obbs, pos, rayStart, rayEnd);
                     if (hitBone == null) continue;
 
                     if (proj instanceof ThrownTrident) {
@@ -193,6 +203,23 @@ public class ProjectileOBBListener {
         if (proj instanceof ThrownTrident) return 8.0f;
         if (proj instanceof AbstractArrow arrow) return (float) arrow.getBaseDamage();
         return (float) proj.getDeltaMovement().length() * 3.0f;
+    }
+
+    /**
+     * Ray from rayStart to rayEnd, subdivided so fast projectiles (crossbow bolts)
+     * do not skip thin OBBs between ticks. Returns the first hit bone name or null.
+     */
+    private static String testRaySegmented(Map<String, OBB> obbs, Vec3 entityPos,
+                                           Vec3 rayStart, Vec3 rayEnd) {
+        double dist = rayStart.distanceTo(rayEnd);
+        int steps = Math.max(1, (int) Math.ceil(dist / 0.5));
+        for (int i = 0; i < steps; i++) {
+            double t0 = (double) i / steps;
+            double t1 = (double) (i + 1) / steps;
+            String hit = testAllOBBs(obbs, entityPos, rayStart.lerp(rayEnd, t0), rayStart.lerp(rayEnd, t1));
+            if (hit != null) return hit;
+        }
+        return null;
     }
 
     /** Tests a ray against attackable OBBs (physical or detectable), preferring physical; returns hit bone name or null. */

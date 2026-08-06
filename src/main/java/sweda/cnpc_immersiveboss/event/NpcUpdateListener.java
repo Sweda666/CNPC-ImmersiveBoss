@@ -18,7 +18,12 @@ import java.util.Map;
 public class NpcUpdateListener {
 
     private static final int COMBAT_TIMEOUT_TICKS = 100;
-    private final Map<Integer, Boolean> lastCombatState = new HashMap<>();
+    private static final Map<Integer, Boolean> lastCombatState = new HashMap<>();
+
+    /** Drops combat state when the NPC is removed (prevents stale state on entity-ID reuse). */
+    public static void onEntityRemoved(int entityId) {
+        lastCombatState.remove(entityId);
+    }
 
     @SubscribeEvent
     public void onNpcUpdate(NpcEvent.UpdateEvent event) {

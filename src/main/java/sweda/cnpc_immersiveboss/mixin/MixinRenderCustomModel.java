@@ -4,6 +4,7 @@ import com.goodbird.cnpcgeckoaddon.client.renderer.RenderCustomModel;
 import com.goodbird.cnpcgeckoaddon.entity.EntityCustomModel;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.phys.Vec3;
 import org.slf4j.Logger;
@@ -25,7 +26,6 @@ import sweda.cnpc_immersiveboss.network.packet.SyncOBBPacket;
 import sweda.cnpc_immersiveboss.network.packet.SyncHitboxPacket;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -38,7 +38,12 @@ public abstract class MixinRenderCustomModel {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     @Unique
-    private static final Set<Integer> syncedEntityIds = new HashSet<>();
+    private static final Map<Integer, ResourceLocation> syncedModels = new HashMap<>();
+
+    /** Removes sync state when the NPC is removed — prevents stale model tracking on entity-ID reuse. */
+    public static void onEntityRemoved(int npcId) {
+        syncedModels.remove(npcId);
+    }
 
     @Unique
     private static int diagFrameCount = 0;
@@ -65,10 +70,13 @@ public abstract class MixinRenderCustomModel {
 
         if (animatable.owner != null) {
             int npcId = animatable.owner.getId();
-            ClientHitboxData.put(npcId, hitboxDefs);
-            if (!syncedEntityIds.contains(npcId)) {
-                syncedEntityIds.add(npcId);
-                NetworkHandler.sendToServer(new SyncHitboxPacket(npcId, hitboxDefs));
+            ClientHitboxData.put(npcId, animatable.modelResLoc, hitboxDefs);
+            // Re-sync whenever the model changes (not just once per entity) — a model
+            // switch must also invalidate the server-side fallback defs.
+            ResourceLocation prevModel = syncedModels.get(npcId);
+            if (prevModel == null || !prevModel.equals(animatable.modelResLoc)) {
+                syncedModels.put(npcId, animatable.modelResLoc);
+                NetworkHandler.sendToServer(new SyncHitboxPacket(npcId, animatable.modelResLoc.toString(), hitboxDefs));
             }
         }
 

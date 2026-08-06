@@ -24,6 +24,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import sweda.cnpc_immersiveboss.api.IMixinNpcDamagedEvent;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.event.NpcUpdateListener;
 import sweda.cnpc_immersiveboss.hitbox.ClientHitboxData;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxParser;
@@ -63,10 +64,22 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
         return cnpc_multihitbox$lastHitboxName;
     }
 
-    /** Clean up OBB data when entity is removed. */
+    /** Clean up all per-entity hitbox state when the entity is removed. */
     @Inject(method = "remove", at = @At("HEAD"), remap = false)
     private void cnpc_multihitbox$onRemove(net.minecraft.world.entity.Entity.RemovalReason reason, CallbackInfo ci) {
+        EntityNPCInterface self = (EntityNPCInterface) (Object) this;
         cnpc_multihitbox$boneOBBs.clear();
+        int id = self.getId();
+        if (self.level().isClientSide) {
+            // Client caches — classes in these branches are only touched client-side,
+            // so referencing client-only classes here is dedicated-server safe.
+            ClientHitboxData.remove(id);
+            MixinRenderCustomModel.onEntityRemoved(id);
+            sweda.cnpc_immersiveboss.client.bossbar.ClientBossBarData.remove(id);
+        } else {
+            ServerHitboxData.remove(id);
+            NpcUpdateListener.onEntityRemoved(id);
+        }
     }
 
     /** Static hitbox fallback: only when no animated OBBs from client. */
@@ -74,30 +87,43 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
     private void cnpc_multihitbox$onTick(CallbackInfo ci) {
         EntityNPCInterface self = (EntityNPCInterface) (Object) this;
 
+        // Dead NPC: drop all OBB collision data immediately — hitbox raycasts,
+        // wireframes and entity collision vanish with the death (AABB stays default).
+        if (self.isDeadOrDying()) {
+            cnpc_multihitbox$boneOBBs.clear();
+            return;
+        }
+
         // If animated OBBs exist, don't touch the AABB
         if (!cnpc_multihitbox$boneOBBs.isEmpty()) return;
 
-        // Fallback: compute static AABB from GeoHitboxDef
-        List<GeoHitboxDef> defs = self.level().isClientSide
-            ? ClientHitboxData.get(self.getId())
-            : ServerHitboxData.get(self.getId());
-        if (defs == null || defs.isEmpty()) {
-            if (!(self instanceof EntityCustomNpc)) return;
+        // Current model path — cached defs must be validated against it so that
+        // switching the NPC model invalidates stale hitbox definitions.
+        ResourceLocation modelRL = null;
+        if (self instanceof EntityCustomNpc) {
             DataDisplay display = self.display;
-            if (!(display instanceof IDataDisplay idDisplay) || !idDisplay.hasCustomModel()) return;
-            CustomModelData modelData = idDisplay.getCustomModelData();
-            String modelPath = modelData.getModel();
-            if (modelPath == null || modelPath.isEmpty()) return;
-            ResourceLocation modelRL = ResourceLocation.tryParse(modelPath);
-            if (modelRL == null) return;
-
-            defs = parseHitboxDefs(modelRL, self);
-            if (!defs.isEmpty()) {
-                ServerHitboxData.put(self.getId(), defs);
+            if (display instanceof IDataDisplay idDisplay && idDisplay.hasCustomModel()) {
+                CustomModelData modelData = idDisplay.getCustomModelData();
+                String modelPath = modelData.getModel();
+                if (modelPath != null && !modelPath.isEmpty()) {
+                    modelRL = ResourceLocation.tryParse(modelPath);
+                }
             }
         }
+        if (modelRL == null) return;
 
-        if (defs == null || defs.isEmpty()) return;
+        List<GeoHitboxDef> defs = self.level().isClientSide
+            ? ClientHitboxData.getForModel(self.getId(), modelRL)
+            : ServerHitboxData.getForModel(self.getId(), modelRL);
+        if (defs == null || defs.isEmpty()) {
+            defs = parseHitboxDefs(modelRL, self);
+            if (defs.isEmpty()) return;
+            if (self.level().isClientSide) {
+                ClientHitboxData.put(self.getId(), modelRL, defs);
+            } else {
+                ServerHitboxData.put(self.getId(), modelRL, defs);
+            }
+        }
 
         float size = self.display.getSize();
         float yawRad = (float) Math.toRadians(self.yBodyRot);
