@@ -1,0 +1,20 @@
+{
+  "cnpc_immersiveboss.gui.title": "自定义 BossBar 设置",
+  "cnpc_immersiveboss.gui.texture_path": "纹理路径",
+  "cnpc_immersiveboss.gui.select": "选择",
+  "cnpc_immersiveboss.gui.color": "颜色",
+  "cnpc_immersiveboss.gui.x_shift": "X偏移",
+  "cnpc_immersiveboss.gui.x_scale_label": "X",
+  "cnpc_immersiveboss.gui.y_scale_label": "Y",
+  "cnpc_immersiveboss.gui.width": "宽",
+  "cnpc_immersiveboss.gui.height": "高",
+  "cnpc_immersiveboss.gui.save": "保存",
+  "cnpc_immersiveboss.gui.cancel": "取消",
+  "cnpc_immersiveboss.gui.edit": "编辑",
+  "cnpc_immersiveboss.gui.scale": "缩放",
+  "cnpc_immersiveboss.gui.size": "尺寸",
+  "cnpc_immersiveboss.gui.help_texture": "纹理: modid:textures/xxx.png | 颜色: 十六进制如 FF0000",
+  "cnpc_immersiveboss.gui.help_ranges": "偏移: -200~200 | 缩放: 0.1~2.0 | 尺寸: 16~1024",
+  "cnpc_immersiveboss.bossbar.mode_customize": "显示自定义血条",
+  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "战斗时显示自定义血条"
+}

@@ -1,0 +1,20 @@
+{
+  "cnpc_immersiveboss.gui.title": "Настройки BossBar",
+  "cnpc_immersiveboss.gui.texture_path": "Путь к текстуре",
+  "cnpc_immersiveboss.gui.select": "Выбрать",
+  "cnpc_immersiveboss.gui.color": "Цвет",
+  "cnpc_immersiveboss.gui.x_shift": "Смещение X",
+  "cnpc_immersiveboss.gui.x_scale_label": "X",
+  "cnpc_immersiveboss.gui.y_scale_label": "Y",
+  "cnpc_immersiveboss.gui.width": "Ширина",
+  "cnpc_immersiveboss.gui.height": "Высота",
+  "cnpc_immersiveboss.gui.save": "Сохранить",
+  "cnpc_immersiveboss.gui.cancel": "Отмена",
+  "cnpc_immersiveboss.gui.edit": "Ред.",
+  "cnpc_immersiveboss.gui.scale": "Масштаб",
+  "cnpc_immersiveboss.gui.size": "Размер",
+  "cnpc_immersiveboss.gui.help_texture": "Текстура: modid:textures/xxx.png | Цвет: hex FF0000",
+  "cnpc_immersiveboss.gui.help_ranges": "Смещение: -200~200 | Масштаб: 0.1~2.0 | Размер: 16~1024",
+  "cnpc_immersiveboss.bossbar.mode_customize": "Показать свой",
+  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Показать свой (в бою)"
+}

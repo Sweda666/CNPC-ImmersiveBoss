@@ -1,0 +1,20 @@
+{
+  "cnpc_immersiveboss.gui.title": "Custom BossBar Settings",
+  "cnpc_immersiveboss.gui.texture_path": "Texture Path",
+  "cnpc_immersiveboss.gui.select": "Select",
+  "cnpc_immersiveboss.gui.color": "Color",
+  "cnpc_immersiveboss.gui.x_shift": "X Offset",
+  "cnpc_immersiveboss.gui.x_scale_label": "X",
+  "cnpc_immersiveboss.gui.y_scale_label": "Y",
+  "cnpc_immersiveboss.gui.width": "Width",
+  "cnpc_immersiveboss.gui.height": "Height",
+  "cnpc_immersiveboss.gui.save": "Save",
+  "cnpc_immersiveboss.gui.cancel": "Cancel",
+  "cnpc_immersiveboss.gui.edit": "Edit",
+  "cnpc_immersiveboss.gui.scale": "Scale",
+  "cnpc_immersiveboss.gui.size": "Size",
+  "cnpc_immersiveboss.gui.help_texture": "Texture: modid:textures/xxx.png | Color: hex e.g. FF0000",
+  "cnpc_immersiveboss.gui.help_ranges": "Offset: -200~200 | Scale: 0.1~2.0 | Size: 16~1024",
+  "cnpc_immersiveboss.bossbar.mode_customize": "Show Custom",
+  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Show Custom (Attacking)"
+}

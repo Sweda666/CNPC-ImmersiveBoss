@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "sweda.cnpc_immersiveboss.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "refmap": "cnpc_immersiveboss.refmap.json",
+  "mixins": [
+    "MixinDataDisplay",
+    "MixinEntity",
+    "MixinEntityNPCInterface",
+    "MixinNpcDamagedEvent"
+  ],
+  "client": [
+    "MixinGuiNpcDisplay",
+    "MixinRenderCustomModel",
+    "MixinGameRenderer",
+    "GeoBoneAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}
