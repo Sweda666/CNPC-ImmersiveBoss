@@ -45,6 +45,10 @@ public class EntityCollisionListener {
                 event.getServer().getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof EntityNPCInterface npc)) continue;
+                // Per-tick hitbox maintenance — fallback for CustomNPCs builds
+                // where EntityNPCInterface.tick()/remove() are not mixin-injectable
+                // (idempotent alongside the mixin path).
+                NpcHitboxTickHandler.onNpcTick(npc);
                 if (!(entity instanceof IOBBHolder holderA)) continue;
 
                 Map<String, OBB> obbsA = holderA.cnpc_immersiveboss$getBoneOBBs();
