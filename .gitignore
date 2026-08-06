@@ -20,6 +20,18 @@ hs_err_pid*
 # Common working directory
 run
 
+# Data generator working directory (./gradlew runData)
+run-data/
+
+# Data generator output (added to source set for dev builds; not committed)
+src/generated/
+
+# Eclipse (build.gradle applies the 'eclipse' plugin)
+.classpath
+.project
+.settings/
+bin/
+
 # Local launcher script
 startOpenCode..bat
 
