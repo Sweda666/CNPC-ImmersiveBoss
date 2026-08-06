@@ -135,15 +135,12 @@ public abstract class MixinRenderCustomModel {
             if (lenX < 1e-10 || lenY < 1e-10 || lenZ < 1e-10) continue;
 
             // --- Cube-to-static-pivot offset (static, in MC world units via bbToWorld) ---
-            // Blockbench coords → MC model space: X is negated, Y/Z unchanged. This mirrors
-            // GeckoLib's own conversion (GeoBone.getModelPosition does -x*16, y*16, z*16);
-            // the bone pivot comes from getWorldPosition() which is already MC space. Using
-            // the wrong mirror axis flips hitbox rotation direction — e.g. bones spinning
-            // around Y in animations turn the opposite way from the rendered model.
+            // Blockbench convention: front = -Z (north).  Entity-local space (yaw=0): front = +Z (south).
+            // The model-space Z offset is negated to map Blockbench coords to entity-local coords.
             Vec3 dc = def.center();
-            double lx = (def.staticPivot.x - dc.x) * bbToWorld;
+            double lx = (dc.x - def.staticPivot.x) * bbToWorld;
             double ly = (dc.y - def.staticPivot.y) * bbToWorld;
-            double lz = (dc.z - def.staticPivot.z) * bbToWorld;
+            double lz = (def.staticPivot.z - dc.z) * bbToWorld;
 
             // --- Rotate offset by MODEL-space rotation (no entity yaw) ---
             double rlx = (m00/lenX)*lx + (m01/lenY)*ly + (m02/lenZ)*lz;
@@ -165,11 +162,10 @@ public abstract class MixinRenderCustomModel {
             Vec3 az = new Vec3(nz_x*cosYaw - nz_z*sinYaw, nz_y, nz_x*sinYaw + nz_z*cosYaw);
 
             // --- Apply cube-local rotation (Blockbench order: Z → Y → X) ---
-            // Under the X mirror, Y and Z rotations flip direction; X stays the same.
             if (def.cubeRotation != null) {
                 double crx = Math.toRadians(def.cubeRotation.x);
-                double cry = -Math.toRadians(def.cubeRotation.y);
-                double crz = -Math.toRadians(def.cubeRotation.z);
+                double cry = Math.toRadians(def.cubeRotation.y);
+                double crz = Math.toRadians(def.cubeRotation.z);
                 ax = rotateAround(ax, az, crz); // Z first
                 ay = rotateAround(ay, az, crz);
                 ax = rotateAround(ax, ay, cry); // Y second
