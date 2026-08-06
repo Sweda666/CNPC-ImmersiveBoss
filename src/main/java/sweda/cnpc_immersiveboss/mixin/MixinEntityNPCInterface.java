@@ -116,7 +116,8 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
             : ServerHitboxData.getForModel(self.getId(), modelRL);
         if (defs == null || defs.isEmpty()) {
             defs = parseHitboxDefs(modelRL, self);
-            if (defs.isEmpty()) return;
+            // Defensive: parse can theoretically yield null under cache races.
+            if (defs == null || defs.isEmpty()) return;
             if (self.level().isClientSide) {
                 ClientHitboxData.put(self.getId(), modelRL, defs);
             } else {

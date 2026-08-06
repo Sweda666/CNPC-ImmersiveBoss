@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Parses .geo.json files to extract collision box bone definitions.
@@ -20,7 +21,8 @@ import java.util.*;
  */
 public final class GeoHitboxParser {
 
-    private static final Map<ResourceLocation, List<GeoHitboxDef>> CACHE = new HashMap<>();
+    // Thread-safe: read from both the client render thread and the server tick thread.
+    private static final Map<ResourceLocation, List<GeoHitboxDef>> CACHE = new ConcurrentHashMap<>();
 
     private GeoHitboxParser() {}
 

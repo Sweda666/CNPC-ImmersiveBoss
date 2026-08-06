@@ -39,12 +39,41 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class ProjectileOBBListener {
 
-    /** Tridents bounce back at this fraction of their incoming velocity (readable, snappy). */
-    private static final double TRIDENT_BOUNCE_FACTOR = 0.45;
-    /** Ticks a trident keeps its "bounced" flag, preventing re-hits while flying back out. */
-    private static final long BOUNCE_FLAG_TICKS = 15;
+    /** Tridents bounce back at this fraction of their incoming velocity. */
+    private static final double TRIDENT_BOUNCE_FACTOR = 0.2;
+    /** Ticks a trident keeps its "bounced" flag (re-hit guard) AND gets velocity damping. */
+    private static final long BOUNCE_DAMP_TICKS = 12;
+    /** Per-tick velocity multiplier while a bounced trident is in its damping window. */
+    private static final double TRIDENT_DAMP_FACTOR = 0.85;
     /** Server-side: UUID → tick of last trident bounce. Prevents re-damage/re-bounce while the trident is still inside the boss. */
     private static final Map<UUID, Long> BOUNCED_TRIDENTS = new ConcurrentHashMap<>();
+    /** World-spanning AABB for per-dimension trident lookups (1.20.1 has no AABB.INFINITE). */
+    private static final AABB INFINITE_BOX = new AABB(
+        Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY,
+        Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+    /**
+     * Pierce-arrow damage dedup: arrow UUID → NPC ids this bolt already damaged.
+     * Kept in sync across both damage paths (vanilla AABB hits and this scan's
+     * OBB-only hits) so a piercing bolt damages each NPC exactly once.
+     */
+    private static final Map<UUID, PierceDamageEntry> PIERCE_DAMAGED = new ConcurrentHashMap<>();
+    /** How long a pierce-dedup entry is kept after its last hit before being GC'd. */
+    private static final long PIERCE_ENTRY_TTL_TICKS = 6000;
+
+    private static final class PierceDamageEntry {
+        final Set<Integer> npcIds = ConcurrentHashMap.newKeySet();
+        long lastHitTick;
+    }
+
+    /**
+     * Records a pierce hit on this NPC. Returns true if this bolt had NOT damaged
+     * this NPC before (caller should deal damage); false if already damaged.
+     */
+    private static boolean recordPierceDamage(Projectile proj, int npcId, long tick) {
+        PierceDamageEntry entry = PIERCE_DAMAGED.computeIfAbsent(proj.getUUID(), k -> new PierceDamageEntry());
+        entry.lastHitTick = tick;
+        return entry.npcIds.add(npcId);
+    }
 
     @SubscribeEvent
     public static void onProjectileImpact(ProjectileImpactEvent event) {
@@ -75,11 +104,17 @@ public class ProjectileOBBListener {
             h.cnpc_immersiveboss$setLastHitboxName(hitBone);
         }
 
-        // Piercing arrows: vanilla pierce logic applies damage AND keeps the arrow
-        // flying. Never cancel — cancelling skips hitEntity entirely, which makes
-        // the bolt visually pass through the NPC without dealing any damage.
+        // Piercing arrows: vanilla pierce logic applies damage on AABB hits. If this
+        // bolt already damaged this NPC (via the tick scan covering OBB-only hits),
+        // cancel so vanilla cannot double-damage it. Never cancelled on first hit —
+        // cancelling skips hitEntity entirely, which would make the bolt pass through
+        // the NPC without dealing any damage.
         if (proj instanceof AbstractArrow arrow && arrow.getPierceLevel() > 0) {
-            return;
+            if (!recordPierceDamage(proj, npc.getId(), proj.level().getGameTime())) {
+                event.setCanceled(true);
+                return;
+            }
+            return; // first hit — let vanilla pierce deal the damage
         }
 
         if (hitBone == null) {
@@ -115,11 +150,29 @@ public class ProjectileOBBListener {
         if (event.phase != TickEvent.Phase.END) return;
 
         long tick = event.getServer().getTickCount();
-        if (!BOUNCED_TRIDENTS.isEmpty()) {
-            BOUNCED_TRIDENTS.entrySet().removeIf(e -> tick - e.getValue() > BOUNCE_FLAG_TICKS);
+
+        // GC stale pierce-dedup entries (arrows that have since been removed).
+        if (!PIERCE_DAMAGED.isEmpty()) {
+            PIERCE_DAMAGED.entrySet().removeIf(e -> tick - e.getValue().lastHitTick > PIERCE_ENTRY_TTL_TICKS);
         }
 
         for (ServerLevel level : event.getServer().getAllLevels()) {
+            // Trident bounce damping: while a bounced trident is still in its damping
+            // window, bleed its speed every tick so it stops a short distance away
+            // instead of flying off at full bounce speed.
+            if (!BOUNCED_TRIDENTS.isEmpty()) {
+                for (ThrownTrident t : level.getEntitiesOfClass(ThrownTrident.class, INFINITE_BOX)) {
+                    Long bounceTick = BOUNCED_TRIDENTS.get(t.getUUID());
+                    if (bounceTick == null) continue;
+                    long since = tick - bounceTick;
+                    if (since > BOUNCE_DAMP_TICKS) {
+                        BOUNCED_TRIDENTS.remove(t.getUUID());
+                        continue;
+                    }
+                    t.setDeltaMovement(t.getDeltaMovement().scale(TRIDENT_DAMP_FACTOR));
+                }
+            }
+
             for (Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof EntityNPCInterface npc)) continue;
                 if (!(entity instanceof IOBBHolder holder)) continue;
@@ -140,13 +193,6 @@ public class ProjectileOBBListener {
                 List<Projectile> projectiles = level.getEntitiesOfClass(Projectile.class, scanBox,
                     p -> p.isAlive() && !(p.getOwner() == npc));
                 for (Projectile proj : projectiles) {
-                    // Piercing arrows: vanilla pierce logic already applied damage and keeps them
-                    // flying — do not let the scan damage them twice or discard them.
-                    if (proj instanceof AbstractArrow arrow && arrow.getPierceLevel() > 0
-                        && !(proj instanceof ThrownTrident)) {
-                        continue;
-                    }
-
                     Vec3 rayStart = new Vec3(proj.xo, proj.yo, proj.zo);
                     Vec3 rayEnd = proj.position();
 
@@ -157,6 +203,19 @@ public class ProjectileOBBListener {
                         // Never discard a trident — bounce it once (re-hit guard lives
                         // inside bounceTrident) and leave it alone while it flies back out.
                         bounceTrident(npc, proj, hitBone, worldObbs);
+                        continue;
+                    }
+
+                    // Piercing arrows: vanilla pierce damages AABB hits; this scan covers
+                    // OBB-only hits outside the default AABB (otherwise fast bolts could
+                    // pass through the boss untouched). Shared dedup set ensures the same
+                    // bolt damages each NPC exactly once across both paths.
+                    if (proj instanceof AbstractArrow arrow && arrow.getPierceLevel() > 0) {
+                        if (recordPierceDamage(proj, npc.getId(), tick)) {
+                            applyProjectileDamage(npc, proj, hitBone);
+                        } else if (npc instanceof IOBBHolder h) {
+                            h.cnpc_immersiveboss$setLastHitboxName(hitBone);
+                        }
                         continue;
                     }
 
@@ -182,7 +241,7 @@ public class ProjectileOBBListener {
         // Re-hit guard: while the trident is flying back out, don't bounce it again.
         long tick = proj.level().getGameTime();
         Long lastBounce = BOUNCED_TRIDENTS.get(proj.getUUID());
-        if (lastBounce != null && tick - lastBounce <= BOUNCE_FLAG_TICKS) return;
+        if (lastBounce != null && tick - lastBounce <= BOUNCE_DAMP_TICKS) return;
         BOUNCED_TRIDENTS.put(proj.getUUID(), tick);
 
         applyProjectileDamage(npc, proj, hitBone);
