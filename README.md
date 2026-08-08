@@ -2,7 +2,7 @@
 
 CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模组。它为 GeckoLib NPC 模型提供可随骨骼动画旋转、移动的 OBB 多碰撞箱，并补充自定义 Boss 血条、分部位受伤、碰撞脚本事件和定时碰撞伤害 API。
 
-本文档对应当前源码版本 `0.3.3`。
+本文档对应当前源码版本 `0.3.9`。
 
 ## 主要功能
 
