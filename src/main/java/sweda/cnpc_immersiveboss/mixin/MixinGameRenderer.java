@@ -5,7 +5,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.ForgeMod;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -42,7 +41,7 @@ public abstract class MixinGameRenderer {
         // Reconstruct player look ray
         Vec3 eyePos = camera.getEyePosition(partialTick);
         Vec3 viewVec = camera.getViewVector(partialTick);
-        double reach = mc.player.getAttributeValue(ForgeMod.ENTITY_REACH.get());
+        double reach = mc.player.getEntityReach();
         if (reach <= 0) reach = 4.5; // fallback
         Vec3 rayEnd = eyePos.add(viewVec.x * reach, viewVec.y * reach, viewVec.z * reach);
 
@@ -61,13 +60,10 @@ public abstract class MixinGameRenderer {
         Entity bestEntity = vanillaTarget;
         Vec3 bestHitPos = null;
 
-        // Iterate renderable entities for NPCs with detectable OBBs
-        double reachSq = reach * reach * 2.25; // broad-phase: skip entities beyond 1.5× reach
+        // Iterate renderable entities for NPCs with detectable OBBs. The entity
+        // origin may be far outside reach on large models, so each OBB is tested directly.
         for (Entity entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof IOBBHolder holder)) continue;
-
-            // Broad-phase: skip entities clearly beyond reach
-            if (entity.distanceToSqr(camera) > reachSq) continue;
 
             Map<String, OBB> boneObbs = holder.cnpc_immersiveboss$getBoneOBBs();
             if (boneObbs.isEmpty()) continue;

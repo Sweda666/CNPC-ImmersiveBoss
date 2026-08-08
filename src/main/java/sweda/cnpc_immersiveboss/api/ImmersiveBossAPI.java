@@ -6,6 +6,7 @@ import noppes.npcs.api.NpcAPI;
 import noppes.npcs.api.entity.ICustomNpc;
 import noppes.npcs.constants.EnumScriptType;
 import noppes.npcs.entity.EntityNPCInterface;
+import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
 
 /**
  * Static utility API for CNPC scripts to interact with ImmersiveBoss features.
@@ -24,8 +25,25 @@ import noppes.npcs.entity.EntityNPCInterface;
  *   var ImmersiveBossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
  *   ImmersiveBossAPI.damageHitbox(npc, 10.0, "hb_head");
  * </pre>
+ *
+ * <h3>Activating collision damage</h3>
+ * Optional arguments can be omitted from the end. The complete form is:
+ * <pre>
+ *   ImmersiveBossAPI.activateHitboxDamage(
+ *       npc, "hs_sword", 20, 4.0, 3, 10, 1
+ *   );
+ * </pre>
+ * This activates {@code hs_sword} for 20 ticks, deals 4 damage, can damage each
+ * target up to 3 times at intervals of 10 ticks, and admits only the first target.
+ * Non-positive repeat and target limits mean unlimited.
  */
 public final class ImmersiveBossAPI {
+
+    public static final int DEFAULT_HITBOX_DAMAGE_DURATION_TICKS = 20;
+    public static final float DEFAULT_HITBOX_COLLISION_DAMAGE = 1.0F;
+    public static final int DEFAULT_HITBOX_DAMAGE_REPEAT_COUNT = 1;
+    public static final int DEFAULT_HITBOX_DAMAGE_REPEAT_INTERVAL_TICKS = 10;
+    public static final int DEFAULT_HITBOX_DAMAGE_MAX_TARGETS = 0;
 
     private ImmersiveBossAPI() {}
 
@@ -99,5 +117,63 @@ public final class ImmersiveBossAPI {
         if (entity instanceof IOBBHolder holder) {
             holder.cnpc_immersiveboss$setLastHitboxName(null);
         }
+    }
+
+    /**
+     * Activates collision damage for one hitbox using all default options.
+     * <pre>
+     *   ImmersiveBossAPI.activateHitboxDamage(npc, "hs_sword");
+     * </pre>
+     */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName) {
+        return activateHitboxDamage(wrapper, hitboxName,
+            DEFAULT_HITBOX_DAMAGE_DURATION_TICKS);
+    }
+
+    /** Activates collision damage with a custom duration in ticks. */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int durationTicks) {
+        return activateHitboxDamage(wrapper, hitboxName, durationTicks,
+            DEFAULT_HITBOX_COLLISION_DAMAGE);
+    }
+
+    /** Activates collision damage with a custom duration and damage amount. */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int durationTicks, float damage) {
+        return activateHitboxDamage(wrapper, hitboxName, durationTicks, damage,
+            DEFAULT_HITBOX_DAMAGE_REPEAT_COUNT);
+    }
+
+    /** Activates collision damage with a per-target repeat limit. Non-positive means unlimited. */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int durationTicks, float damage,
+                                               int repeatCount) {
+        return activateHitboxDamage(wrapper, hitboxName, durationTicks, damage, repeatCount,
+            DEFAULT_HITBOX_DAMAGE_REPEAT_INTERVAL_TICKS);
+    }
+
+    /** Activates collision damage with a repeat interval in ticks. */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int durationTicks, float damage,
+                                               int repeatCount, int repeatIntervalTicks) {
+        return activateHitboxDamage(wrapper, hitboxName, durationTicks, damage, repeatCount,
+            repeatIntervalTicks, DEFAULT_HITBOX_DAMAGE_MAX_TARGETS);
+    }
+
+    /**
+     * Activates collision damage for one hitbox. A non-positive repeat count or target
+     * limit means unlimited. Re-activating the same hitbox starts a fresh damage window.
+     *
+     * @return true when the damage window was created; false for invalid input or client-side use
+     */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int durationTicks, float damage,
+                                               int repeatCount, int repeatIntervalTicks,
+                                               int maxTargets) {
+        if (wrapper == null) return false;
+        Entity entity = wrapper.getMCEntity();
+        if (!(entity instanceof EntityNPCInterface npc)) return false;
+        return HitboxDamageManager.activate(npc, hitboxName, durationTicks, damage,
+            repeatCount, repeatIntervalTicks, maxTargets);
     }
 }

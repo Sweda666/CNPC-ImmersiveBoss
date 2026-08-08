@@ -4,6 +4,8 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.Entity;
@@ -13,6 +15,7 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import noppes.npcs.entity.EntityNPCInterface;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.config.ClientConfig;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.OBB;
 import sweda.cnpc_immersiveboss.hitbox.OBBPhysics;
@@ -36,6 +39,7 @@ public class DebugOBBRenderer {
     private static final int COLOR_DETECTABLE = 0xFFFF00;
     private static final int COLOR_SENSOR = 0x00FF00;
     private static final int COLOR_COLLIDING = 0xFF0000;
+    private static final float LABEL_SCALE = 0.025F;
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
@@ -72,7 +76,7 @@ public class DebugOBBRenderer {
                     rel.axisX, rel.axisY, rel.axisZ
                 );
                 DebugBox debugBox = new DebugBox(
-                    entity, worldObb,
+                    entity, entry.getKey(), worldObb,
                     GeoHitboxDef.isPhysicalBone(entry.getKey()),
                     GeoHitboxDef.isDetectableBone(entry.getKey())
                 );
@@ -88,10 +92,16 @@ public class DebugOBBRenderer {
         poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
 
         for (DebugBox debugBox : debugBoxes) {
-            int color = collidingBoxes.contains(debugBox)
-                ? COLOR_COLLIDING
-                : colorFor(debugBox.physical, debugBox.detectable);
-            drawOBB(poseStack, bufferSource, debugBox.obb, color);
+            drawOBB(poseStack, bufferSource, debugBox.obb,
+                debugColor(debugBox, collidingBoxes));
+        }
+
+        if (ClientConfig.SHOW_OBB_NAMES.get()) {
+            Font font = mc.font;
+            for (DebugBox debugBox : debugBoxes) {
+                drawName(poseStack, bufferSource, mc, font, debugBox,
+                    debugColor(debugBox, collidingBoxes));
+            }
         }
 
         poseStack.popPose();
@@ -134,6 +144,29 @@ public class DebugOBBRenderer {
         if (physical) return COLOR_PHYSICAL;
         if (detectable) return COLOR_DETECTABLE;
         return COLOR_SENSOR;
+    }
+
+    private static int debugColor(DebugBox debugBox, Set<DebugBox> collidingBoxes) {
+        return collidingBoxes.contains(debugBox)
+            ? COLOR_COLLIDING
+            : colorFor(debugBox.physical, debugBox.detectable);
+    }
+
+    private static void drawName(PoseStack poseStack, MultiBufferSource.BufferSource buffer,
+                                 Minecraft mc, Font font, DebugBox debugBox, int color) {
+        poseStack.pushPose();
+        poseStack.translate(debugBox.obb.center.x, debugBox.obb.center.y, debugBox.obb.center.z);
+        poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
+        poseStack.scale(-LABEL_SCALE, -LABEL_SCALE, LABEL_SCALE);
+
+        float x = -font.width(debugBox.name) / 2.0F;
+        float y = -font.lineHeight / 2.0F;
+        font.drawInBatch(
+            debugBox.name, x, y, 0xFF000000 | color, false,
+            poseStack.last().pose(), buffer, Font.DisplayMode.SEE_THROUGH,
+            0, LightTexture.FULL_BRIGHT
+        );
+        poseStack.popPose();
     }
 
     private static void drawOBB(PoseStack poseStack, MultiBufferSource.BufferSource buffer,
@@ -192,12 +225,15 @@ public class DebugOBBRenderer {
 
     private static final class DebugBox {
         private final Entity owner;
+        private final String name;
         private final OBB obb;
         private final boolean physical;
         private final boolean detectable;
 
-        private DebugBox(Entity owner, OBB obb, boolean physical, boolean detectable) {
+        private DebugBox(Entity owner, String name, OBB obb,
+                         boolean physical, boolean detectable) {
             this.owner = owner;
+            this.name = name;
             this.obb = obb;
             this.physical = physical;
             this.detectable = detectable;

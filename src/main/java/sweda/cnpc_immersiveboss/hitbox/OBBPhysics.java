@@ -156,6 +156,15 @@ public final class OBBPhysics {
         return tmin <= tmax ? tmin * worldLength : -1;
     }
 
+    /** Squared distance from a point to the nearest point on an OBB. */
+    public static double distanceToSqr(OBB obb, Vec3 point) {
+        Vec3 offset = point.subtract(obb.center);
+        double dx = Math.max(Math.abs(offset.dot(obb.axisX)) - obb.halfExtents.x, 0);
+        double dy = Math.max(Math.abs(offset.dot(obb.axisY)) - obb.halfExtents.y, 0);
+        double dz = Math.max(Math.abs(offset.dot(obb.axisZ)) - obb.halfExtents.z, 0);
+        return dx * dx + dy * dy + dz * dz;
+    }
+
     /** Writes {t1, t2} into out[] for the intersection of a 1D ray with an interval. Returns false if miss. */
     private static boolean slab1D(double dir, double start, double lo, double hi, double[] out) {
         if (Math.abs(dir) < 1e-10) {

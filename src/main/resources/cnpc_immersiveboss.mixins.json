@@ -8,7 +8,8 @@
     "MixinDataDisplay",
     "MixinEntity",
     "MixinEntityNPCInterface",
-    "MixinNpcDamagedEvent"
+    "MixinNpcDamagedEvent",
+    "MixinServerGamePacketListenerImpl"
   ],
   "client": [
     "MixinGuiNpcDisplay",

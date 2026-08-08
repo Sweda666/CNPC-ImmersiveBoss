@@ -6,6 +6,8 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -13,6 +15,7 @@ import net.minecraftforge.network.NetworkRegistry;
 import org.slf4j.Logger;
 import sweda.cnpc_immersiveboss.client.DebugOBBRenderer;
 import sweda.cnpc_immersiveboss.client.renderer.RenderHandler;
+import sweda.cnpc_immersiveboss.config.ClientConfig;
 import sweda.cnpc_immersiveboss.event.EntityCollisionListener;
 import sweda.cnpc_immersiveboss.event.HitboxDamageListener;
 import sweda.cnpc_immersiveboss.event.NpcUpdateListener;
@@ -31,6 +34,8 @@ public class Cnpc_immersiveboss {
 
     public Cnpc_immersiveboss() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
 
         // Register the Deferred Register to the mod event bus so tabs get registered
         // No need to register blocks or items anymore
@@ -98,5 +103,4 @@ public class Cnpc_immersiveboss {
         }
     }
 }
-
 

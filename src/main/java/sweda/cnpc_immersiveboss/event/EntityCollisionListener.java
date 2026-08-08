@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import sweda.cnpc_immersiveboss.api.HitboxCollideEvent;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
+import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
 import sweda.cnpc_immersiveboss.hitbox.OBB;
 import sweda.cnpc_immersiveboss.hitbox.OBBPhysics;
 
@@ -49,6 +50,7 @@ public class EntityCollisionListener {
                 // where EntityNPCInterface.tick()/remove() are not mixin-injectable
                 // (idempotent alongside the mixin path).
                 NpcHitboxTickHandler.onNpcTick(npc);
+                HitboxDamageManager.tick(npc);
                 if (!(entity instanceof IOBBHolder holderA)) continue;
 
                 Map<String, OBB> obbsA = holderA.cnpc_immersiveboss$getBoneOBBs();
@@ -77,9 +79,9 @@ public class EntityCollisionListener {
 
                 int collisions = 0;
                 for (Entity other : nearby) {
-                    if (other instanceof IOBBHolder holderB) {
+                    if (other instanceof IOBBHolder holderB
+                        && !holderB.cnpc_immersiveboss$getBoneOBBs().isEmpty()) {
                         Map<String, OBB> obbsB = holderB.cnpc_immersiveboss$getBoneOBBs();
-                        if (obbsB.isEmpty()) continue;
                         Vec3 posB = other.position();
                         String[] boneNamesB = new String[obbsB.size()];
                         boolean[] physicalB = new boolean[obbsB.size()];
@@ -104,6 +106,7 @@ public class EntityCollisionListener {
                                         pushMutual(entity, other, obbA);
                                         pushed = true;
                                     }
+                                    HitboxDamageManager.onCollision(npc, boneNamesA[ia], other);
                                     fireCollideHook(npc, other, boneNamesA[ia], boneNamesB[ib]);
                                     collisions++;
                                 }
@@ -118,6 +121,7 @@ public class EntityCollisionListener {
                                     pushMutual(entity, other, worldObbsA.get(ia));
                                     pushed = true;
                                 }
+                                HitboxDamageManager.onCollision(npc, boneNamesA[ia], other);
                                 fireCollideHook(npc, other, boneNamesA[ia], "AABB");
                                 collisions++;
                             }

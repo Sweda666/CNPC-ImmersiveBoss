@@ -12,6 +12,7 @@ import sweda.cnpc_immersiveboss.api.IOBBHolder;
 import sweda.cnpc_immersiveboss.hitbox.ClientHitboxData;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxParser;
+import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
 import sweda.cnpc_immersiveboss.hitbox.OBBPhysics;
 import sweda.cnpc_immersiveboss.hitbox.ServerHitboxData;
 
@@ -90,6 +91,7 @@ public class NpcHitboxTickHandler {
 
     /** Purges all per-entity hitbox state (OBBs + static caches). */
     public static void clearEntityState(EntityNPCInterface self) {
+        HitboxDamageManager.clear(self);
         if (self instanceof IOBBHolder holder) {
             holder.cnpc_immersiveboss$setBoneOBBs(Collections.emptyMap());
         }
