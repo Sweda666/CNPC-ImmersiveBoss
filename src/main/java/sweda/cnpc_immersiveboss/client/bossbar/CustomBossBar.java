@@ -52,6 +52,10 @@ public class CustomBossBar {
         float healthPercent = Math.min(1.0F, (float) value / max);
         int progress = (int) (((displayWidth - xShift * xScale * 2) * healthPercent) + (xShift * xScale));
 
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.disableBlend();
+        guiGraphics.blit(customBossBar, x, y, 0f, 0f, displayWidth, barHeight, displayWidth, displayHeight);
+
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(colorR, colorG, colorB, 1.0F);
@@ -59,7 +63,6 @@ public class CustomBossBar {
 
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
-        guiGraphics.blit(customBossBar, x, y, 0f, 0f, displayWidth, barHeight, displayWidth, displayHeight);
 
         return barHeight;
     }

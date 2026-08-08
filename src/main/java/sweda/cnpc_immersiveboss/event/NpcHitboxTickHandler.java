@@ -78,7 +78,8 @@ public class NpcHitboxTickHandler {
         }
 
         float size = self.display.getSize();
-        float yawRad = (float) Math.toRadians(self.yBodyRot);
+        // 与 MixinRenderCustomModel 一致：GeckoLib 渲染 yaw = 180 − yBodyRot（模型前向 −Z）
+        float yawRad = (float) Math.toRadians(180.0 - self.yBodyRot);
         double bbToWorld = size / 80.0;
 
         AABB fallback = OBBPhysics.staticFallbackAABB(self, defs, bbToWorld, yawRad);

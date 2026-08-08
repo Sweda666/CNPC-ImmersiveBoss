@@ -166,6 +166,16 @@ dependencies {
     implementation fg.deobf("libs:geckolib-forge-1.20.1-4.8.4:0")
     implementation fg.deobf("libs:CustomNPCs-1.20.1-GBPort-Unofficial-1.20.1.20260711:0")
     implementation fg.deobf("libs:CNPC-Gecko-Addon-CE-1.20.1-1.2.2:0")
+    // ── 可选兼容（dev 环境）：CNPC MoreRenderSuppot ──────────────────────────────
+    // 仅当 libs/cnpc_morerendersuppot.jar 存在时才以 runtimeOnly 挂载（只进运行 classpath，
+    // 编译期零引用）。删除该 jar → 本项目构建/运行完全不受影响（真正的可选兼容）。
+    // 两个模组的生产 jar 互不声明依赖；SRG jar 必须 fg.deobf() 才能在 official 名的 dev
+    // 环境加载（裸 jar 进 run/mods 会 NoSuchFieldError）。更新流程：从 CNPC MoreRenderSuppot
+    // 项目 gradlew build 后覆盖 libs/cnpc_morerendersuppot.jar，并删除
+    // %GRADLE_USER_HOME%\caches\forge_gradle\deobf_dependencies\libs\cnpc_morerendersuppot 缓存。
+    if (file("libs/cnpc_morerendersuppot.jar").exists()) {
+        runtimeOnly fg.deobf("libs:cnpc_morerendersuppot:0")
+    }
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html

@@ -13,6 +13,7 @@
   "client": [
     "MixinGuiNpcDisplay",
     "MixinRenderCustomModel",
+    "MixinGeoEntityRenderer",
     "MixinGameRenderer",
     "GeoBoneAccessor"
   ],

@@ -55,23 +55,19 @@ public class EntityCollisionListener {
                 if (obbsA.isEmpty()) continue;
 
                 Vec3 posA = npc.position();
-                // Pre-compute world-space OBBs ONCE per NPC per tick — only physical bones
-                // Count physical bones first
-                int physCount = 0;
-                for (String name : obbsA.keySet()) {
-                    if (GeoHitboxDef.isPhysicalBone(name)) physCount++;
-                }
-                String[] boneNamesA = new String[physCount];
-                List<OBB> worldObbsA = new ArrayList<>(physCount);
+                // Sensors participate in overlap events; only physical boxes apply push forces.
+                String[] boneNamesA = new String[obbsA.size()];
+                boolean[] physicalA = new boolean[obbsA.size()];
+                List<OBB> worldObbsA = new ArrayList<>(obbsA.size());
                 int bi = 0;
                 for (Map.Entry<String, OBB> entry : obbsA.entrySet()) {
-                    if (!GeoHitboxDef.isPhysicalBone(entry.getKey())) continue;
                     OBB rel = entry.getValue();
                     worldObbsA.add(new OBB(
                         rel.center.add(posA), rel.halfExtents,
                         rel.axisX, rel.axisY, rel.axisZ
                     ));
-                    boneNamesA[bi++] = entry.getKey();
+                    boneNamesA[bi] = entry.getKey();
+                    physicalA[bi++] = GeoHitboxDef.isPhysicalBone(entry.getKey());
                 }
 
                 AABB broad = OBBPhysics.enclosingAABB(worldObbsA).inflate(0.5);
@@ -85,47 +81,45 @@ public class EntityCollisionListener {
                         Map<String, OBB> obbsB = holderB.cnpc_immersiveboss$getBoneOBBs();
                         if (obbsB.isEmpty()) continue;
                         Vec3 posB = other.position();
-                        // Pre-compute B's world-space OBBs — only physical bones
-                        int physCountB = 0;
-                        for (String name : obbsB.keySet()) {
-                            if (GeoHitboxDef.isPhysicalBone(name)) physCountB++;
-                        }
-                        if (physCountB == 0) continue;
-                        String[] boneNamesB = new String[physCountB];
-                        List<OBB> worldObbsB = new ArrayList<>(physCountB);
+                        String[] boneNamesB = new String[obbsB.size()];
+                        boolean[] physicalB = new boolean[obbsB.size()];
+                        List<OBB> worldObbsB = new ArrayList<>(obbsB.size());
                         int bj = 0;
                         for (Map.Entry<String, OBB> entry : obbsB.entrySet()) {
-                            if (!GeoHitboxDef.isPhysicalBone(entry.getKey())) continue;
                             OBB rel = entry.getValue();
                             worldObbsB.add(new OBB(
                                 rel.center.add(posB), rel.halfExtents,
                                 rel.axisX, rel.axisY, rel.axisZ
                             ));
-                            boneNamesB[bj++] = entry.getKey();
+                            boneNamesB[bj] = entry.getKey();
+                            physicalB[bj++] = GeoHitboxDef.isPhysicalBone(entry.getKey());
                         }
 
-                        boolean collided = false;
+                        boolean pushed = false;
                         for (int ia = 0; ia < worldObbsA.size(); ia++) {
                             OBB obbA = worldObbsA.get(ia);
                             for (int ib = 0; ib < worldObbsB.size(); ib++) {
                                 if (OBBPhysics.intersects(obbA, worldObbsB.get(ib))) {
-                                    pushMutual(entity, other, obbA);
+                                    if (!pushed && physicalA[ia] && physicalB[ib]) {
+                                        pushMutual(entity, other, obbA);
+                                        pushed = true;
+                                    }
                                     fireCollideHook(npc, other, boneNamesA[ia], boneNamesB[ib]);
-                                    collided = true;
                                     collisions++;
-                                    break;
                                 }
                             }
-                            if (collided) break;
                         }
                     } else {
                         AABB otherBB = other.getBoundingBox();
+                        boolean pushed = false;
                         for (int ia = 0; ia < worldObbsA.size(); ia++) {
                             if (OBBPhysics.intersects(worldObbsA.get(ia), otherBB)) {
-                                pushMutual(entity, other, worldObbsA.get(ia));
+                                if (!pushed && physicalA[ia]) {
+                                    pushMutual(entity, other, worldObbsA.get(ia));
+                                    pushed = true;
+                                }
                                 fireCollideHook(npc, other, boneNamesA[ia], "AABB");
                                 collisions++;
-                                break;
                             }
                         }
                     }

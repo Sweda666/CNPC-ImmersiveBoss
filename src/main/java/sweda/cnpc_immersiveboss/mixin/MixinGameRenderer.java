@@ -50,8 +50,12 @@ public abstract class MixinGameRenderer {
         Entity vanillaTarget = mc.crosshairPickEntity;
         double bestDist = Double.MAX_VALUE;
         if (vanillaTarget != null) {
-            // Approximate distance from vanilla hit
-            bestDist = vanillaTarget.distanceToSqr(camera) + 0.5;
+            if (mc.hitResult instanceof EntityHitResult entityHit
+                && entityHit.getEntity() == vanillaTarget) {
+                bestDist = entityHit.getLocation().distanceTo(eyePos);
+            } else {
+                bestDist = Math.sqrt(vanillaTarget.distanceToSqr(camera));
+            }
         }
 
         Entity bestEntity = vanillaTarget;

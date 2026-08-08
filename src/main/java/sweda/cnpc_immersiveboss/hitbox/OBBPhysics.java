@@ -8,7 +8,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Pure OBB collision detection using Separating Axis Theorem (SAT).
+ * Strict OBB collision detection using Separating Axis Theorem (SAT).
  *
  * Key methods:
  *   intersects(OBB, AABB)  — OBB vs block collision (SAT)
@@ -67,26 +67,29 @@ public final class OBBPhysics {
         Vec3 bY = bIsAABB ? WORLD_Y : _bY;
         Vec3 bZ = bIsAABB ? WORLD_Z : _bZ;
 
-        Vec3[] aAxes = {aX, aY, aZ};
-        Vec3[] bAxes = {bX, bY, bZ};
+        Vec3[] aEdges = {aX, aY, aZ};
+        Vec3[] bEdges = {bX, bY, bZ};
+        Vec3[] aNormals = {aY.cross(aZ), aZ.cross(aX), aX.cross(aY)};
+        Vec3[] bNormals = {bY.cross(bZ), bZ.cross(bX), bX.cross(bY)};
 
         // Test A's 3 face normals
-        for (Vec3 axis : aAxes) {
-            if (!overlap(axis, cA, hA, aX, aY, aZ, cB, hB, bX, bY, bZ))
+        for (Vec3 axis : aNormals) {
+            if (isUsableAxis(axis)
+                && !overlap(axis, cA, hA, aX, aY, aZ, cB, hB, bX, bY, bZ))
                 return false;
         }
         // Test B's 3 face normals
-        for (Vec3 axis : bAxes) {
-            if (!overlap(axis, cA, hA, aX, aY, aZ, cB, hB, bX, bY, bZ))
+        for (Vec3 axis : bNormals) {
+            if (isUsableAxis(axis)
+                && !overlap(axis, cA, hA, aX, aY, aZ, cB, hB, bX, bY, bZ))
                 return false;
         }
         // Test 9 cross-product axes: A axes × B axes
-        for (Vec3 aAxis : aAxes) {
-            for (Vec3 bAxis : bAxes) {
+        for (Vec3 aAxis : aEdges) {
+            for (Vec3 bAxis : bEdges) {
                 Vec3 cross = aAxis.cross(bAxis);
-                if (cross.lengthSqr() < 1e-10) continue;
-                Vec3 axis = cross.normalize();
-                if (!overlap(axis, cA, hA, aX, aY, aZ, cB, hB, bX, bY, bZ))
+                if (!isUsableAxis(cross)) continue;
+                if (!overlap(cross, cA, hA, aX, aY, aZ, cB, hB, bX, bY, bZ))
                     return false;
             }
         }
@@ -111,51 +114,54 @@ public final class OBBPhysics {
 
     // ── Raycasting ──────────────────────────────────────────────────────
 
-    /** Pre-allocated reusable array for slab1D to avoid per-call allocation. */
-    private static final double[] SLAB_TMP = new double[2];
+    /** Per-thread reusable array for slab1D to avoid per-call allocation. */
+    private static final ThreadLocal<double[]> SLAB_TMP = ThreadLocal.withInitial(() -> new double[2]);
 
     /**
-     * Ray vs OBB intersection (slab method in OBB-local space).
+     * Ray vs OBB intersection (slab method in the box's axis basis).
      * Returns distance along ray to hit point, or -1 if no hit.
      */
     public static double intersectRay(OBB obb, Vec3 rayStart, Vec3 rayEnd) {
-        double dx = rayStart.x - obb.center.x;
-        double dy = rayStart.y - obb.center.y;
-        double dz = rayStart.z - obb.center.z;
-        double lsx = dx * obb.axisX.x + dy * obb.axisX.y + dz * obb.axisX.z;
-        double lsy = dx * obb.axisY.x + dy * obb.axisY.y + dz * obb.axisY.z;
-        double lsz = dx * obb.axisZ.x + dy * obb.axisZ.y + dz * obb.axisZ.z;
+        Vec3 faceX = obb.axisY.cross(obb.axisZ);
+        Vec3 faceY = obb.axisZ.cross(obb.axisX);
+        Vec3 faceZ = obb.axisX.cross(obb.axisY);
+        double determinant = obb.axisX.dot(faceX);
+        if (!Double.isFinite(determinant) || Math.abs(determinant) < 1e-10) return -1;
 
-        dx = rayEnd.x - obb.center.x;
-        dy = rayEnd.y - obb.center.y;
-        dz = rayEnd.z - obb.center.z;
-        double lex = dx * obb.axisX.x + dy * obb.axisX.y + dz * obb.axisX.z;
-        double ley = dx * obb.axisY.x + dy * obb.axisY.y + dz * obb.axisY.z;
-        double lez = dx * obb.axisZ.x + dy * obb.axisZ.y + dz * obb.axisZ.z;
+        Vec3 startOffset = rayStart.subtract(obb.center);
+        Vec3 endOffset = rayEnd.subtract(obb.center);
+        double lsx = startOffset.dot(faceX) / determinant;
+        double lsy = startOffset.dot(faceY) / determinant;
+        double lsz = startOffset.dot(faceZ) / determinant;
+        double lex = endOffset.dot(faceX) / determinant;
+        double ley = endOffset.dot(faceY) / determinant;
+        double lez = endOffset.dot(faceZ) / determinant;
 
         double dirx = lex - lsx, diry = ley - lsy, dirz = lez - lsz;
-        double len = Math.sqrt(dirx * dirx + diry * diry + dirz * dirz);
-        if (len < 1e-10) return -1;
+        double worldLength = rayStart.distanceTo(rayEnd);
+        if (worldLength < 1e-10) return -1;
 
         double hx = obb.halfExtents.x, hy = obb.halfExtents.y, hz = obb.halfExtents.z;
+        double[] slab = SLAB_TMP.get();
 
-        if (!slab1D(dirx, lsx, -hx, hx, SLAB_TMP)) return -1;
-        double tmin = SLAB_TMP[0], tmax = SLAB_TMP[1];
+        if (!slab1D(dirx, lsx, -hx, hx, slab)) return -1;
+        double tmin = Math.max(0, slab[0]), tmax = Math.min(1, slab[1]);
 
-        if (!slab1D(diry, lsy, -hy, hy, SLAB_TMP)) return -1;
-        tmin = Math.max(tmin, SLAB_TMP[0]); tmax = Math.min(tmax, SLAB_TMP[1]);
+        if (!slab1D(diry, lsy, -hy, hy, slab)) return -1;
+        tmin = Math.max(tmin, slab[0]); tmax = Math.min(tmax, slab[1]);
 
-        if (!slab1D(dirz, lsz, -hz, hz, SLAB_TMP)) return -1;
-        tmin = Math.max(tmin, SLAB_TMP[0]); tmax = Math.min(tmax, SLAB_TMP[1]);
+        if (!slab1D(dirz, lsz, -hz, hz, slab)) return -1;
+        tmin = Math.max(tmin, slab[0]); tmax = Math.min(tmax, slab[1]);
 
-        return (tmin <= tmax && tmin >= 0 && tmin <= len) ? tmin : -1;
+        return tmin <= tmax ? tmin * worldLength : -1;
     }
 
     /** Writes {t1, t2} into out[] for the intersection of a 1D ray with an interval. Returns false if miss. */
     private static boolean slab1D(double dir, double start, double lo, double hi, double[] out) {
         if (Math.abs(dir) < 1e-10) {
             if (start >= lo && start <= hi) {
-                out[0] = 0; out[1] = Double.MAX_VALUE;
+                out[0] = Double.NEGATIVE_INFINITY;
+                out[1] = Double.POSITIVE_INFINITY;
                 return true;
             }
             return false;
@@ -221,9 +227,11 @@ public final class OBBPhysics {
             double hh = def.size.y * bbToWorld / 2.0;
             double hd = def.size.z * bbToWorld / 2.0;
 
-            double cx = npc.getX() + center.x * cos - center.z * sin;
+            // 烘焙 X 取负（骨骼 pivot 烘焙 updatePivot(-pivot.x)），yaw 与渲染器一致（180−yBodyRot）。
+            // 链外无 X 镜像。
+            double cx = npc.getX() + (-center.x * cos - center.z * sin);
             double cy = npc.getY() + center.y;
-            double cz = npc.getZ() + center.x * sin + center.z * cos;
+            double cz = npc.getZ() + (-center.x * sin + center.z * cos);
 
             double ex = Math.abs(hw * cos) + Math.abs(hd * sin);
             double ez = Math.abs(hw * sin) + Math.abs(hd * cos);
@@ -238,6 +246,11 @@ public final class OBBPhysics {
     }
 
     // ── Misc helpers ──────────────────────────────────────────────────
+
+    private static boolean isUsableAxis(Vec3 axis) {
+        double lengthSqr = axis.lengthSqr();
+        return Double.isFinite(lengthSqr) && lengthSqr >= 1e-20;
+    }
 
     private static double dot(Vec3 a, Vec3 b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
 }

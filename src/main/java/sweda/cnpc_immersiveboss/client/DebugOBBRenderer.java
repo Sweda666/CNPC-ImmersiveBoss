@@ -7,21 +7,35 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import noppes.npcs.entity.EntityNPCInterface;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.OBB;
+import sweda.cnpc_immersiveboss.hitbox.OBBPhysics;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
- * Debug renderer — draws red wireframe outlines of active OBBs in the world.
+ * Debug renderer — draws property-colored wireframe outlines of active OBBs in the world.
  * Reads OBB data per-entity via IOBBHolder (NOT the old static BoneWorldData).
  * Hooked into RenderLevelStageEvent.AFTER_TRANSLUCENT_BLOCKS.
  */
 public class DebugOBBRenderer {
+
+    private static final int COLOR_PHYSICAL_DETECTABLE = 0xFFFFFF;
+    private static final int COLOR_PHYSICAL = 0x4488FF;
+    private static final int COLOR_DETECTABLE = 0xFFFF00;
+    private static final int COLOR_SENSOR = 0x00FF00;
+    private static final int COLOR_COLLIDING = 0xFF0000;
 
     @SubscribeEvent
     public static void onRenderLevel(RenderLevelStageEvent event) {
@@ -39,59 +53,117 @@ public class DebugOBBRenderer {
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
-        poseStack.pushPose();
-        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
+        List<DebugBox> debugBoxes = new ArrayList<>();
+        Map<Entity, List<DebugBox>> boxesByEntity = new IdentityHashMap<>();
 
         for (Entity entity : mc.level.entitiesForRendering()) {
-            if (!(entity instanceof EntityNPCInterface npc)) continue;
+            if (!(entity instanceof EntityNPCInterface)) continue;
             if (!(entity instanceof IOBBHolder holder)) continue;
 
             Map<String, OBB> obbs = holder.cnpc_immersiveboss$getBoneOBBs();
             if (obbs.isEmpty()) continue;
 
-            // Convert entity-relative OBBs to world-space
             Vec3 pos = entity.position();
-            List<OBB> worldObbs = new ArrayList<>(obbs.size());
-            for (OBB rel : obbs.values()) {
-                worldObbs.add(new OBB(
+            List<DebugBox> entityBoxes = new ArrayList<>(obbs.size());
+            for (Map.Entry<String, OBB> entry : obbs.entrySet()) {
+                OBB rel = entry.getValue();
+                OBB worldObb = new OBB(
                     rel.center.add(pos), rel.halfExtents,
                     rel.axisX, rel.axisY, rel.axisZ
-                ));
+                );
+                DebugBox debugBox = new DebugBox(
+                    entity, worldObb,
+                    GeoHitboxDef.isPhysicalBone(entry.getKey()),
+                    GeoHitboxDef.isDetectableBone(entry.getKey())
+                );
+                entityBoxes.add(debugBox);
+                debugBoxes.add(debugBox);
             }
-            drawOBBs(poseStack, bufferSource, worldObbs, 0xff, 0x44, 0x44);
+            boxesByEntity.put(entity, entityBoxes);
+        }
+
+        Set<DebugBox> collidingBoxes = findCollidingBoxes(mc, debugBoxes, boxesByEntity);
+
+        poseStack.pushPose();
+        poseStack.translate(-camPos.x, -camPos.y, -camPos.z);
+
+        for (DebugBox debugBox : debugBoxes) {
+            int color = collidingBoxes.contains(debugBox)
+                ? COLOR_COLLIDING
+                : colorFor(debugBox.physical, debugBox.detectable);
+            drawOBB(poseStack, bufferSource, debugBox.obb, color);
         }
 
         poseStack.popPose();
         bufferSource.endBatch();
     }
 
-    private static void drawOBBs(PoseStack poseStack, MultiBufferSource.BufferSource buffer,
-                                 List<OBB> obbs, int r, int g, int b) {
-        for (OBB obb : obbs) {
-            Vec3[] corners = getCorners(obb);
-            VertexConsumer vc = buffer.getBuffer(RenderType.LINES);
+    private static Set<DebugBox> findCollidingBoxes(
+            Minecraft mc, List<DebugBox> debugBoxes,
+            Map<Entity, List<DebugBox>> boxesByEntity) {
+        Set<DebugBox> result = Collections.newSetFromMap(new IdentityHashMap<>());
+        if (mc.level == null) return result;
 
-            drawLine(poseStack, vc, corners[0], corners[1], r, g, b, 255);
-            drawLine(poseStack, vc, corners[1], corners[2], r, g, b, 255);
-            drawLine(poseStack, vc, corners[2], corners[3], r, g, b, 255);
-            drawLine(poseStack, vc, corners[3], corners[0], r, g, b, 255);
-            drawLine(poseStack, vc, corners[4], corners[5], r, g, b, 255);
-            drawLine(poseStack, vc, corners[5], corners[6], r, g, b, 255);
-            drawLine(poseStack, vc, corners[6], corners[7], r, g, b, 255);
-            drawLine(poseStack, vc, corners[7], corners[4], r, g, b, 255);
-            drawLine(poseStack, vc, corners[0], corners[4], r, g, b, 255);
-            drawLine(poseStack, vc, corners[1], corners[5], r, g, b, 255);
-            drawLine(poseStack, vc, corners[2], corners[6], r, g, b, 255);
-            drawLine(poseStack, vc, corners[3], corners[7], r, g, b, 255);
+        for (DebugBox debugBox : debugBoxes) {
+            AABB broad = OBBPhysics.enclosingAABB(debugBox.obb).inflate(0.5);
+            List<Entity> nearby = mc.level.getEntities(debugBox.owner, broad,
+                other -> !other.noPhysics
+                    && !other.isPassengerOfSameVehicle(debugBox.owner));
 
-            Vec3 c = obb.center;
-            Vec3 ax = c.add(obb.axisX.scale(obb.halfExtents.x));
-            Vec3 ay = c.add(obb.axisY.scale(obb.halfExtents.y));
-            Vec3 az = c.add(obb.axisZ.scale(obb.halfExtents.z));
-            drawLine(poseStack, vc, c, ax, 255, 100, 100, 128);
-            drawLine(poseStack, vc, c, ay, 100, 255, 100, 128);
-            drawLine(poseStack, vc, c, az, 100, 100, 255, 128);
+            for (Entity other : nearby) {
+                if (other instanceof IOBBHolder) {
+                    List<DebugBox> otherBoxes = boxesByEntity.get(other);
+                    if (otherBoxes == null || otherBoxes.isEmpty()) continue;
+
+                    for (DebugBox otherBox : otherBoxes) {
+                        if (OBBPhysics.intersects(debugBox.obb, otherBox.obb)) {
+                            result.add(debugBox);
+                            result.add(otherBox);
+                        }
+                    }
+                } else if (OBBPhysics.intersects(debugBox.obb, other.getBoundingBox())) {
+                    result.add(debugBox);
+                }
+            }
         }
+        return result;
+    }
+
+    private static int colorFor(boolean physical, boolean detectable) {
+        if (physical && detectable) return COLOR_PHYSICAL_DETECTABLE;
+        if (physical) return COLOR_PHYSICAL;
+        if (detectable) return COLOR_DETECTABLE;
+        return COLOR_SENSOR;
+    }
+
+    private static void drawOBB(PoseStack poseStack, MultiBufferSource.BufferSource buffer,
+                                OBB obb, int color) {
+        int r = color >> 16 & 0xFF;
+        int g = color >> 8 & 0xFF;
+        int b = color & 0xFF;
+        Vec3[] corners = getCorners(obb);
+        VertexConsumer vc = buffer.getBuffer(RenderType.LINES);
+
+        drawLine(poseStack, vc, corners[0], corners[1], r, g, b, 255);
+        drawLine(poseStack, vc, corners[1], corners[2], r, g, b, 255);
+        drawLine(poseStack, vc, corners[2], corners[3], r, g, b, 255);
+        drawLine(poseStack, vc, corners[3], corners[0], r, g, b, 255);
+        drawLine(poseStack, vc, corners[4], corners[5], r, g, b, 255);
+        drawLine(poseStack, vc, corners[5], corners[6], r, g, b, 255);
+        drawLine(poseStack, vc, corners[6], corners[7], r, g, b, 255);
+        drawLine(poseStack, vc, corners[7], corners[4], r, g, b, 255);
+        drawLine(poseStack, vc, corners[0], corners[4], r, g, b, 255);
+        drawLine(poseStack, vc, corners[1], corners[5], r, g, b, 255);
+        drawLine(poseStack, vc, corners[2], corners[6], r, g, b, 255);
+        drawLine(poseStack, vc, corners[3], corners[7], r, g, b, 255);
+
+        Vec3 c = obb.center;
+        Vec3 ax = c.add(obb.axisX.scale(obb.halfExtents.x));
+        Vec3 ay = c.add(obb.axisY.scale(obb.halfExtents.y));
+        Vec3 az = c.add(obb.axisZ.scale(obb.halfExtents.z));
+        drawLine(poseStack, vc, c, ax, 255, 100, 100, 128);
+        drawLine(poseStack, vc, c, ay, 100, 255, 100, 128);
+        drawLine(poseStack, vc, c, az, 100, 100, 255, 128);
     }
 
     private static Vec3[] getCorners(OBB obb) {
@@ -116,5 +188,19 @@ public class DebugOBBRenderer {
             .color(r, g, b, a).normal(0, 1, 0).endVertex();
         vc.vertex(poseStack.last().pose(), (float) to.x, (float) to.y, (float) to.z)
             .color(r, g, b, a).normal(0, 1, 0).endVertex();
+    }
+
+    private static final class DebugBox {
+        private final Entity owner;
+        private final OBB obb;
+        private final boolean physical;
+        private final boolean detectable;
+
+        private DebugBox(Entity owner, OBB obb, boolean physical, boolean detectable) {
+            this.owner = owner;
+            this.obb = obb;
+            this.physical = physical;
+            this.detectable = detectable;
+        }
     }
 }
