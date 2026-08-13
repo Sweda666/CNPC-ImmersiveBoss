@@ -16,5 +16,8 @@
   "cnpc_immersiveboss.gui.help_texture": "纹理: modid:textures/xxx.png | 颜色: 十六进制如 FF0000",
   "cnpc_immersiveboss.gui.help_ranges": "偏移: -200~200 | 缩放: 0.1~2.0 | 尺寸: 16~1024",
   "cnpc_immersiveboss.bossbar.mode_customize": "显示自定义血条",
-  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "战斗时显示自定义血条"
+  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "战斗时显示自定义血条",
+  "cnpc_immersiveboss.rotation.enabled": "启用旋转限制",
+  "cnpc_immersiveboss.rotation.speed": "旋转速度（度/tick）",
+  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "最低导航速度比例"
 }

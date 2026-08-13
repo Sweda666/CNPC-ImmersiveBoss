@@ -22,7 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class GeoHitboxParser {
 
     // Thread-safe: read from both the client render thread and the server tick thread.
-    private static final Map<ResourceLocation, List<GeoHitboxDef>> CACHE = new ConcurrentHashMap<>();
+    private static final Map<CacheKey, List<GeoHitboxDef>> CACHE = new ConcurrentHashMap<>();
 
     private GeoHitboxParser() {}
 
@@ -33,9 +33,9 @@ public final class GeoHitboxParser {
      * Results are cached by model ResourceLocation.
      */
     public static List<GeoHitboxDef> parse(ResourceLocation geoJsonLocation, ResourceManager resourceManager) {
-        if (CACHE.containsKey(geoJsonLocation)) {
-            return CACHE.get(geoJsonLocation);
-        }
+        CacheKey cacheKey = new CacheKey(geoJsonLocation, resourceManager);
+        List<GeoHitboxDef> cached = CACHE.get(cacheKey);
+        if (cached != null) return cached;
 
         List<GeoHitboxDef> result = new ArrayList<>();
         try {
@@ -56,7 +56,7 @@ public final class GeoHitboxParser {
             }
 
             if (stream == null) {
-                CACHE.put(geoJsonLocation, result);
+                CACHE.put(cacheKey, result);
                 return result;
             }
 
@@ -70,7 +70,7 @@ public final class GeoHitboxParser {
             // Return whatever was parsed so far (or empty)
         }
 
-        CACHE.put(geoJsonLocation, result);
+        CACHE.put(cacheKey, result);
         return result;
     }
 
@@ -78,12 +78,10 @@ public final class GeoHitboxParser {
      * Get hitbox bone names for a model. Parses via ResourceManager first if not cached.
      */
     public static Set<String> getHitboxBoneNames(ResourceLocation geoJsonLocation, ResourceManager resourceManager) {
-        List<GeoHitboxDef> defs = CACHE.get(geoJsonLocation);
-        // Re-parse if not cached OR if cached result is empty (server-side parse may have failed)
-        if (defs == null || defs.isEmpty()) {
-            parse(geoJsonLocation, resourceManager);
-            defs = CACHE.get(geoJsonLocation);
-        }
+        CacheKey cacheKey = new CacheKey(geoJsonLocation, resourceManager);
+        List<GeoHitboxDef> defs = CACHE.get(cacheKey);
+        // Empty is a valid negative cache entry. Resource reload clears it.
+        if (defs == null) defs = parse(geoJsonLocation, resourceManager);
         if (defs == null || defs.isEmpty()) return Collections.emptySet();
         Set<String> names = new HashSet<>();
         for (GeoHitboxDef def : defs) {
@@ -167,6 +165,29 @@ public final class GeoHitboxParser {
 
     /** Invalidate cache entry for a specific model. */
     public static void invalidate(ResourceLocation geoJsonLocation) {
-        CACHE.remove(geoJsonLocation);
+        CACHE.keySet().removeIf(key -> key.location.equals(geoJsonLocation));
+    }
+
+    /** Cache entries are scoped to one resource-manager instance. */
+    private static final class CacheKey {
+        private final ResourceLocation location;
+        private final ResourceManager resourceManager;
+
+        private CacheKey(ResourceLocation location, ResourceManager resourceManager) {
+            this.location = location;
+            this.resourceManager = resourceManager;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) return true;
+            if (!(other instanceof CacheKey key)) return false;
+            return location.equals(key.location) && resourceManager == key.resourceManager;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * location.hashCode() + System.identityHashCode(resourceManager);
+        }
     }
 }

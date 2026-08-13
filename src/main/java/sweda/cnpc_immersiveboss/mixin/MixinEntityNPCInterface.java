@@ -5,31 +5,71 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import noppes.npcs.EventHooks;
 import noppes.npcs.api.event.NpcEvent;
 import noppes.npcs.entity.EntityNPCInterface;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import sweda.cnpc_immersiveboss.api.IMixinNpcDamagedEvent;
+import sweda.cnpc_immersiveboss.api.IHitboxDamageContext;
+import sweda.cnpc_immersiveboss.api.INpcTurnState;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.entity.NpcTurnSpeedManager;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.OBB;
 import sweda.cnpc_immersiveboss.hitbox.OBBPhysics;
 
 import java.util.*;
 
-@Mixin(EntityNPCInterface.class)
-public abstract class MixinEntityNPCInterface implements IOBBHolder {
+@Mixin(value = EntityNPCInterface.class, remap = false)
+public abstract class MixinEntityNPCInterface implements IOBBHolder, INpcTurnState {
 
     @Unique
     private final Map<String, OBB> cnpc_multihitbox$boneOBBs = new HashMap<>();
 
     @Unique
     private String cnpc_multihitbox$lastHitboxName = null;
+
+    @Unique
+    private IHitboxDamageContext cnpc_multihitbox$activeDamageContext = null;
+
+    @Unique
+    private boolean cnpc_immersiveboss$turnStateInitialized;
+
+    @Unique
+    private float cnpc_immersiveboss$limitedEntityYaw;
+
+    @Unique
+    private float cnpc_immersiveboss$limitedBodyYaw;
+
+    @Unique
+    private float cnpc_immersiveboss$limitedHeadYaw;
+
+    @Unique
+    private int cnpc_immersiveboss$rearTurnDirection;
+
+    @Unique
+    private long cnpc_immersiveboss$navigationTurnTick = Long.MIN_VALUE;
+
+    @Unique
+    private float cnpc_immersiveboss$navigationTargetYaw;
+
+    @Unique
+    private float cnpc_immersiveboss$navigationSpeedScale = 1.0F;
+
+    @Unique
+    private long cnpc_immersiveboss$lastTurnLimitTick = Long.MIN_VALUE;
+
+    @Unique
+    private boolean cnpc_immersiveboss$hasRequestedRotation;
+
+    @Unique
+    private float cnpc_immersiveboss$requestedRotation;
 
     @Override
     public Map<String, OBB> cnpc_immersiveboss$getBoneOBBs() {
@@ -52,6 +92,117 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
         return cnpc_multihitbox$lastHitboxName;
     }
 
+    @Override
+    public boolean cnpc_immersiveboss$isTurnStateInitialized() {
+        return cnpc_immersiveboss$turnStateInitialized;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$initializeTurnState(float entityYaw, float bodyYaw,
+                                                       float headYaw) {
+        cnpc_immersiveboss$limitedEntityYaw = entityYaw;
+        cnpc_immersiveboss$limitedBodyYaw = bodyYaw;
+        cnpc_immersiveboss$limitedHeadYaw = headYaw;
+        cnpc_immersiveboss$turnStateInitialized = true;
+    }
+
+    @Override
+    public float cnpc_immersiveboss$getLimitedEntityYaw() {
+        return cnpc_immersiveboss$limitedEntityYaw;
+    }
+
+    @Override
+    public float cnpc_immersiveboss$getLimitedBodyYaw() {
+        return cnpc_immersiveboss$limitedBodyYaw;
+    }
+
+    @Override
+    public float cnpc_immersiveboss$getLimitedHeadYaw() {
+        return cnpc_immersiveboss$limitedHeadYaw;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$setLimitedYaws(float entityYaw, float bodyYaw,
+                                                  float headYaw) {
+        cnpc_immersiveboss$limitedEntityYaw = entityYaw;
+        cnpc_immersiveboss$limitedBodyYaw = bodyYaw;
+        cnpc_immersiveboss$limitedHeadYaw = headYaw;
+    }
+
+    @Override
+    public int cnpc_immersiveboss$getRearTurnDirection() {
+        return cnpc_immersiveboss$rearTurnDirection;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$setRearTurnDirection(int direction) {
+        cnpc_immersiveboss$rearTurnDirection = Integer.compare(direction, 0);
+    }
+
+    @Override
+    public long cnpc_immersiveboss$getNavigationTurnTick() {
+        return cnpc_immersiveboss$navigationTurnTick;
+    }
+
+    @Override
+    public float cnpc_immersiveboss$getNavigationTargetYaw() {
+        return cnpc_immersiveboss$navigationTargetYaw;
+    }
+
+    @Override
+    public float cnpc_immersiveboss$getNavigationSpeedScale() {
+        return cnpc_immersiveboss$navigationSpeedScale;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$recordNavigationTurn(long gameTime, float targetYaw,
+                                                         float speedScale) {
+        cnpc_immersiveboss$navigationTurnTick = gameTime;
+        cnpc_immersiveboss$navigationTargetYaw = targetYaw;
+        cnpc_immersiveboss$navigationSpeedScale = speedScale;
+    }
+
+    @Override
+    public long cnpc_immersiveboss$getLastTurnLimitTick() {
+        return cnpc_immersiveboss$lastTurnLimitTick;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$setLastTurnLimitTick(long gameTime) {
+        cnpc_immersiveboss$lastTurnLimitTick = gameTime;
+    }
+
+    @Override
+    public boolean cnpc_immersiveboss$hasRequestedRotation() {
+        return cnpc_immersiveboss$hasRequestedRotation;
+    }
+
+    @Override
+    public float cnpc_immersiveboss$getRequestedRotation() {
+        return cnpc_immersiveboss$requestedRotation;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$setRequestedRotation(float rotation) {
+        cnpc_immersiveboss$requestedRotation = rotation;
+        cnpc_immersiveboss$hasRequestedRotation = true;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$clearRequestedRotation() {
+        cnpc_immersiveboss$hasRequestedRotation = false;
+    }
+
+    @Override
+    public void cnpc_immersiveboss$clearTurnState() {
+        cnpc_immersiveboss$turnStateInitialized = false;
+        cnpc_immersiveboss$rearTurnDirection = 0;
+        cnpc_immersiveboss$navigationTurnTick = Long.MIN_VALUE;
+        cnpc_immersiveboss$navigationSpeedScale = 1.0F;
+        cnpc_immersiveboss$lastTurnLimitTick = Long.MIN_VALUE;
+        cnpc_immersiveboss$hasRequestedRotation = false;
+    }
+
     /**
      * Clean up all per-entity hitbox state when the entity is removed.
      * Optional (require=0): builds without a resolvable EntityNPCInterface.remove
@@ -69,9 +220,16 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
      * injector; the Forge EntityTickEvent path in NpcHitboxTickHandler runs the
      * identical logic (both paths are idempotent).
      */
+    @Inject(method = "tick", at = @At("HEAD"), remap = false, require = 0)
+    private void cnpc_immersiveboss$prepareTurnLimit(CallbackInfo ci) {
+        NpcTurnSpeedManager.prepare((EntityNPCInterface) (Object) this);
+    }
+
     @Inject(method = "tick", at = @At("TAIL"), remap = false, require = 0)
     private void cnpc_multihitbox$onTick(CallbackInfo ci) {
-        sweda.cnpc_immersiveboss.event.NpcHitboxTickHandler.onNpcTick((EntityNPCInterface) (Object) this);
+        EntityNPCInterface self = (EntityNPCInterface) (Object) this;
+        NpcTurnSpeedManager.apply(self);
+        sweda.cnpc_immersiveboss.event.NpcHitboxTickHandler.onNpcTick(self);
     }
 
     /**
@@ -85,6 +243,17 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
     @Inject(method = "hurt", at = @At("HEAD"), remap = false, require = 0)
     private void cnpc_multihitbox$detectHitboxHead(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
         EntityNPCInterface self = (EntityNPCInterface) (Object) this;
+
+        cnpc_multihitbox$activeDamageContext = null;
+        Entity directEntity = source.getDirectEntity();
+        if (directEntity instanceof IHitboxDamageContext context) {
+            String contextHitbox = context.cnpc_immersiveboss$getActiveHitboxName();
+            if (contextHitbox != null) {
+                cnpc_multihitbox$lastHitboxName = contextHitbox;
+                cnpc_multihitbox$activeDamageContext = context;
+                return;
+            }
+        }
 
         // Projectile / prior damage: already set by ProjectileOBBListener or ImmersiveBossAPI
         if (cnpc_multihitbox$lastHitboxName != null) return;
@@ -141,17 +310,33 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder {
      * <p>
      * This makes {@code e.hitboxName} available in CNPC's {@code damaged(e)} handler.
      */
-    @ModifyArg(method = "hurt",
+    @Redirect(method = "hurt",
                at = @At(value = "INVOKE",
-                        target = "Lnoppes/npcs/EventHooks;onNPCDamaged(Lnoppes/npcs/entity/EntityNPCInterface;Lnoppes/npcs/api/event/NpcEvent$DamagedEvent;)Z"),
-               index = 1,
+                         target = "Lnoppes/npcs/EventHooks;onNPCDamaged(Lnoppes/npcs/entity/EntityNPCInterface;Lnoppes/npcs/api/event/NpcEvent$DamagedEvent;)Z"),
                remap = false,
                require = 0)
-    private NpcEvent.DamagedEvent cnpc_multihitbox$injectHitboxName(NpcEvent.DamagedEvent event) {
+    private boolean cnpc_multihitbox$dispatchDamagedEvent(EntityNPCInterface npc,
+                                                           NpcEvent.DamagedEvent event) {
         String hitboxName = cnpc_multihitbox$lastHitboxName;
         if (hitboxName != null) {
             ((IMixinNpcDamagedEvent) event).setHitboxName(hitboxName);
         }
-        return event;
+
+        IHitboxDamageContext context = cnpc_multihitbox$activeDamageContext;
+        if (context != null && context.cnpc_immersiveboss$hasDamageEventResult()) {
+            return context.cnpc_immersiveboss$getDamageEventResult();
+        }
+
+        boolean result = EventHooks.onNPCDamaged(npc, event);
+        if (context != null) {
+            context.cnpc_immersiveboss$setDamageEventResult(result);
+        }
+        return result;
+    }
+
+    @Inject(method = "hurt", at = @At("RETURN"), remap = false, require = 0)
+    private void cnpc_multihitbox$clearDamageContext(DamageSource source, float amount,
+                                                      CallbackInfoReturnable<Boolean> cir) {
+        cnpc_multihitbox$activeDamageContext = null;
     }
 }

@@ -135,13 +135,19 @@ repositories {
     // ForgeGradle automatically adds the Forge maven and Maven Central for you
     mavenCentral()
     maven {
+        url = 'https://www.cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+    maven {
         url = uri("https://company/com/maven2")
     }
     mavenLocal()
     // If you have mod jar dependencies in ./libs, you can declare them as a repository like so.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
     flatDir {
-        dir 'libs'
+        dirs 'libs', '待兼容模组'
     }
 }
 
@@ -166,6 +172,16 @@ dependencies {
     implementation fg.deobf("libs:geckolib-forge-1.20.1-4.8.4:0")
     implementation fg.deobf("libs:CustomNPCs-1.20.1-GBPort-Unofficial-1.20.1.20260711:0")
     implementation fg.deobf("libs:CNPC-Gecko-Addon-CE-1.20.1-1.2.2:0")
+    // Optional TACZ integration: compile against its public classes without
+    // bundling it or requiring it at runtime. Enable in dev with -PtaczDevRuntime.
+    compileOnly fg.deobf("curse.maven:timeless-and-classics-zero-1028108:8055552-sources-8055584")
+    if (project.hasProperty("taczDevRuntime")) {
+        if (file("待兼容模组/tacz-1.20.1-1.1.8-hotfix.jar").exists()) {
+            runtimeOnly fg.deobf("optional:tacz-1.20.1-1.1.8-hotfix:0")
+        } else {
+            runtimeOnly fg.deobf("curse.maven:timeless-and-classics-zero-1028108:8055552-sources-8055584")
+        }
+    }
     // ── 可选兼容（dev 环境）：CNPC MoreRenderSuppot ──────────────────────────────
     // 仅当 libs/cnpc_morerendersuppot.jar 存在时才以 runtimeOnly 挂载（只进运行 classpath，
     // 编译期零引用）。删除该 jar → 本项目构建/运行完全不受影响（真正的可选兼容）。

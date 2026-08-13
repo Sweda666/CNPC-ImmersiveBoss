@@ -14,6 +14,7 @@ import noppes.npcs.entity.EntityNPCInterface;
 import org.slf4j.Logger;
 import sweda.cnpc_immersiveboss.api.HitboxCollideEvent;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.entity.NpcTurnSpeedManager;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
 import sweda.cnpc_immersiveboss.hitbox.OBB;
@@ -36,6 +37,17 @@ public class EntityCollisionListener {
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) {
+            for (net.minecraft.server.level.ServerLevel level :
+                    event.getServer().getAllLevels()) {
+                for (Entity entity : level.getAllEntities()) {
+                    if (entity instanceof EntityNPCInterface npc) {
+                        NpcTurnSpeedManager.prepare(npc);
+                    }
+                }
+            }
+            return;
+        }
         if (event.phase != TickEvent.Phase.END) return;
 
         tickCounter++;
@@ -46,6 +58,7 @@ public class EntityCollisionListener {
                 event.getServer().getAllLevels()) {
             for (Entity entity : level.getAllEntities()) {
                 if (!(entity instanceof EntityNPCInterface npc)) continue;
+                NpcTurnSpeedManager.apply(npc);
                 // Per-tick hitbox maintenance — fallback for CustomNPCs builds
                 // where EntityNPCInterface.tick()/remove() are not mixin-injectable
                 // (idempotent alongside the mixin path).

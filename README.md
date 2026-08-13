@@ -4,6 +4,19 @@ CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模
 
 本文档对应当前源码版本 `0.3.9`。
 
+> 完整分主题教程见 [Wiki](docs/wiki/Home.md)：[安装与快速开始](docs/wiki/Installation-and-Quick-Start.md) · [碰撞箱建模](docs/wiki/Hitbox-Modeling.md) · [战斗与交互](docs/wiki/Combat-and-Interaction.md) · [自定义 Boss 血条](docs/wiki/Custom-Boss-Bar.md) · [脚本 API](docs/wiki/Scripting-API.md) · [常见问题](docs/wiki/Troubleshooting.md)
+
+## 文档导航
+
+| 目标 | 阅读位置 |
+| --- | --- |
+| 安装模组并完成第一次 OBB 测试 | [运行环境与安装](#运行环境与安装)、[快速开始](#快速开始) |
+| 给 Blockbench 模型制作碰撞箱 | [OBB 碰撞箱](#obb-碰撞箱) |
+| 理解攻击、弹射物、交互与推挤 | [攻击、交互与碰撞行为](#攻击交互与碰撞行为) |
+| 编写分部位受伤或攻击动画脚本 | [CustomNPCs 脚本事件](#customnpcs-脚本事件)、[ImmersiveBossAPI](#immersivebossapi) |
+| 配置自定义血条 | [自定义 Boss 血条](#自定义-boss-血条) |
+| 排查模型或脚本问题 | [F3+B 调试颜色](#f3b-调试颜色)、[常见问题](#常见问题) |
+
 ## 主要功能
 
 - 从 GeckoLib `.geo.json` 模型骨骼中读取多个 OBB 碰撞箱。
@@ -11,7 +24,9 @@ CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模
 - 支持玩家近战、交互和弹射物命中大型模型的实际 OBB，而不是只依赖 NPC 原点或原版 AABB。
 - 在 `damaged(e)` 中通过 `e.hitboxName` 判断受击部位。
 - 在 `collide(e)` 中获取发生重叠的双方碰撞箱名称。
-- 通过脚本临时激活某个碰撞箱的伤害能力，可配置持续时间、伤害、重复次数、间隔和目标数量。
+- 通过脚本临时激活某个碰撞箱的伤害能力，可配置开始延迟、持续时间、伤害、重复次数、间隔、目标数量和命中回调。
+- 可限制大型 NPC 的水平转向速度，让模型、身体朝向和 OBB 平滑跟随目标。
+- 可选兼容 TaCZ，使枪械子弹能够命中 NPC 原版 AABB 之外的动画 OBB，并保留 `e.hitboxName`。
 - 使用 `F3+B` 按属性显示不同颜色的 OBB，并将正在重叠的 OBB 标红。
 - 使用一张上下分层的 PNG 制作自定义 Boss 血条，支持常显或仅战斗时显示。
 
@@ -307,6 +322,20 @@ function damaged(e) {
 
 `e.hitboxName` 通常是基础骨骼名。伤害不是从 OBB 进入、射线没有命中任何可攻击 OBB，或当前依赖版本没有解析到对应注入点时，该值可能为 `null`，脚本应保留空值处理。
 
+### `interact(e)`：获取交互碰撞箱
+
+玩家右键交互 NPC 时也可以读取 `e.hitboxName`。服务端会沿玩家视线检测带 `d` 的 OBB，并返回最近命中的基础骨骼名：
+
+```javascript
+function interact(e) {
+    if (e.hitboxName == "hds_control_panel") {
+        e.npc.say("控制面板已启动");
+    }
+}
+```
+
+没有命中可检测 OBB 时，该值为 `null`。需要响应交互的模型部位必须带 `d` 标记，例如 `hds_control_panel` 或 `hadb_switch`。
+
 ### `collide(e)`：获取重叠碰撞箱
 
 NPC 脚本的 `collide(e)` 事件增加了以下字段：
@@ -394,6 +423,38 @@ function damaged(e) {
 }
 ```
 
+### 碰撞箱名称查询
+
+这些方法读取 NPC 当前模型的碰撞箱定义，返回按名称排序、按基础骨骼名去重后的 Java `String[]`：
+
+```text
+String[] getHitboxNames(ICustomNpc npc)
+String[] getPhysicalHitboxNames(ICustomNpc npc)
+String[] getDetectableHitboxNames(ICustomNpc npc)
+String[] getSensorHitboxNames(ICustomNpc npc)
+String[] getVisibleHitboxNames(ICustomNpc npc)
+boolean hasHitbox(ICustomNpc npc, String hitboxName)
+```
+
+多 cube 骨骼产生的 `__1`、`__2` 内部名称不会重复出现在结果中。`physical` 对应 `b` 后缀，`sensor` 对应 `s` 后缀，`detectable` 对应 `d` 标记，`visible` 对应 `a` 标记。同一个碰撞箱可以同时出现在多个分类中。
+
+Nashorn 中可以使用 `Java.from(...)` 转成普通 JavaScript 数组：
+
+```javascript
+function init(e) {
+    var names = Java.from(ImmersiveBossAPI.getHitboxNames(e.npc));
+    for (var i = 0; i < names.length; i++) {
+        e.npc.say("碰撞箱: " + names[i]);
+    }
+
+    if (ImmersiveBossAPI.hasHitbox(e.npc, "hds_sword")) {
+        e.npc.getStoreddata().put("hasSwordHitbox", 1);
+    }
+}
+```
+
+如果 NPC 无效、没有自定义模型、模型没有碰撞箱，或定义与实时 OBB 都尚不可用，则返回空数组。查询优先使用当前模型定义；只有定义不可用时才回退到实时 OBB 名称，避免模型切换后返回旧名称。
+
 ### `activateHitboxDamage`
 
 该 API 在服务端为一个碰撞箱开启临时伤害窗口。窗口存续期间，只要该 OBB 与玩家、普通生物或其他 CustomNPCs 生物发生重叠，就会尝试造成伤害。
@@ -404,11 +465,13 @@ function damaged(e) {
 boolean activateHitboxDamage(
     ICustomNpc npc,
     String hitboxName,
+    int startDelayTicks,
     int durationTicks,
     float damage,
     int repeatCount,
     int repeatIntervalTicks,
-    int maxTargets
+    int maxTargets,
+    function callback
 )
 ```
 
@@ -418,28 +481,39 @@ boolean activateHitboxDamage(
 | --- | --- | ---: | --- |
 | `npc` | 是 | 无 | 拥有该碰撞箱的 NPC，脚本中通常为 `e.npc` |
 | `hitboxName` | 是 | 无 | 碰撞箱基础骨骼名，例如 `hds_sword` |
+| `startDelayTicks` | 是 | `0` | 从调用到窗口启用前等待的 tick 数；负数按 0 处理，无需延迟时必须传 `0` |
 | `durationTicks` | 否 | `20` | 伤害窗口持续 tick 数，必须大于 0 |
 | `damage` | 否 | `1.0` | 每次成功命中的伤害值，必须为有限正数 |
 | `repeatCount` | 否 | `1` | 同一个目标在本次窗口内最多成功受伤次数；小于等于 0 表示无限 |
 | `repeatIntervalTicks` | 否 | `10` | 同一目标两次成功伤害之间的最短 tick 数；负数按 0 处理 |
 | `maxTargets` | 否 | `0` | 本次窗口最多伤害的不同目标数；小于等于 0 表示无限 |
+| `callback` | 否 | 无 | 每次成功造成碰撞伤害后执行；参数依次为攻击方 NPC 和受伤目标的 CNPC 实体包装器 |
 
 对应的所有可用重载为：
 
 ```text
-activateHitboxDamage(npc, hitboxName)
-activateHitboxDamage(npc, hitboxName, durationTicks)
-activateHitboxDamage(npc, hitboxName, durationTicks, damage)
-activateHitboxDamage(npc, hitboxName, durationTicks, damage, repeatCount)
-activateHitboxDamage(npc, hitboxName, durationTicks, damage, repeatCount, repeatIntervalTicks)
-activateHitboxDamage(npc, hitboxName, durationTicks, damage, repeatCount, repeatIntervalTicks, maxTargets)
+activateHitboxDamage(npc, hitboxName, startDelayTicks)
+activateHitboxDamage(npc, hitboxName, startDelayTicks, durationTicks)
+activateHitboxDamage(npc, hitboxName, startDelayTicks, durationTicks, damage)
+activateHitboxDamage(npc, hitboxName, startDelayTicks, durationTicks, damage, repeatCount)
+activateHitboxDamage(npc, hitboxName, startDelayTicks, durationTicks, damage, repeatCount, repeatIntervalTicks)
+activateHitboxDamage(npc, hitboxName, startDelayTicks, durationTicks, damage, repeatCount, repeatIntervalTicks, maxTargets)
 ```
 
-使用全部默认值：
+上述任一重载都可以在末尾追加 `callback`。除了 `startDelayTicks` 必须传入，其余参数均可使用默认值：
 
 ```javascript
-ImmersiveBossAPI.activateHitboxDamage(e.npc, "hds_sword");
+ImmersiveBossAPI.activateHitboxDamage(e.npc, "hds_sword", 0);
 ```
+
+同一组重载也直接提供在 `e.npc` 上。下面两种写法完全等价：
+
+```javascript
+ImmersiveBossAPI.activateHitboxDamage(e.npc, "hds_sword", 0, 20, 1);
+e.npc.activateHitboxDamage("hds_sword", 0, 20, 1);
+```
+
+直接调用同样支持末尾的回调函数和所有完整参数。
 
 这表示 `hds_sword` 在接下来 20 tick 内，对每个目标造成 1 点伤害，每个目标最多成功受伤 1 次，不限制不同目标数量。
 
@@ -449,21 +523,45 @@ ImmersiveBossAPI.activateHitboxDamage(e.npc, "hds_sword");
 var activated = ImmersiveBossAPI.activateHitboxDamage(
     e.npc,
     "hds_sword",
+    6,
     20,
     4.0,
     3,
     10,
-    1
+    1,
+    function(attacker, target) {
+        attacker.say("命中 " + target.getName());
+    }
 );
 ```
 
 这表示：
 
+- 调用后先等待 `6 tick`，等待期间碰撞不会造成伤害。
 - 窗口持续 `20 tick`。
 - 每次造成 `4` 点伤害。
 - 同一个目标最多成功受伤 `3` 次。
 - 同一目标每次受伤至少间隔 `10 tick`。
 - 只允许第一个成功受到伤害的目标占用本次窗口的名额，后续不同目标不再受伤。
+- 每次实际成功造成伤害后都执行回调；同一目标允许循环受伤时，每次成功伤害都会执行一次。
+
+回调是普通 Nashorn 函数，会保留定义它时捕获的脚本变量；额外提供的 `attacker` 和 `target` 都是 CNPC 脚本实体包装器：
+
+```javascript
+function openTrackedWindow(npc) {
+    var hitCount = 0;
+    return ImmersiveBossAPI.activateHitboxDamage(
+        npc, "hds_sword", 4, 20, 3.0, 3, 5, 0,
+        function(attacker, target) {
+            hitCount++;
+            attacker.getStoreddata().put("lastTarget", target.getUUID());
+            attacker.getStoreddata().put("windowHits", hitCount);
+        }
+    );
+}
+```
+
+回调只在 `hurt(...)` 实际返回成功后运行。目标处于无敌帧、伤害事件被取消或伤害没有生效时不会调用。回调抛出异常时会写入服务端日志，不会中断碰撞检测或后续窗口循环。
 
 可以将调用放在攻击动画开始或武器进入有效帧的脚本逻辑中：
 
@@ -476,6 +574,7 @@ function openSwordDamageWindow(npc) {
     return ImmersiveBossAPI.activateHitboxDamage(
         npc,
         "hds_sword",
+        0,
         8,
         6.0,
         1,
@@ -488,6 +587,8 @@ function openSwordDamageWindow(npc) {
 调用与计数规则：
 
 - 返回 `true` 表示成功创建窗口；名称无效、持续时间或伤害无效、NPC 已死亡、在客户端调用等情况返回 `false`。
+- `startDelayTicks` 从 API 调用所在 tick 开始计时，持续时间从延迟结束、窗口正式启用时才开始计算。
+- 延迟等待中的窗口仍可被查询或取消，但不会记录目标、命中次数或重复间隔。
 - 再次激活同一个 NPC 的同一基础骨骼，会重置持续时间、目标列表和重复计数，不会与旧窗口叠加。
 - 传入 `bone__1` 等多 cube 内部名时会归一化到基础骨骼；建议直接传基础名称。
 - `repeatCount` 针对每个目标分别计数，`maxTargets` 针对整个调用周期计数。
@@ -497,6 +598,91 @@ function openSwordDamageWindow(npc) {
 - NPC 死亡、移除或窗口到期后，相关状态会自动清理。
 - 伤害源使用 NPC 的 `mobAttack`，因此会经过原版护甲、无敌帧、Forge 伤害事件和 CustomNPCs 伤害流程。
 - 碰撞伤害不依赖 NPC 是否启用了脚本；脚本只负责调用一次来开启窗口。
+
+### 伤害窗口查询与中断
+
+每个窗口都可以独立查询或立即中断：
+
+```text
+boolean cancelHitboxDamageWindow(ICustomNpc npc, String hitboxName)
+int cancelAllHitboxDamageWindows(ICustomNpc npc)
+boolean isHitboxDamageWindowActive(ICustomNpc npc, String hitboxName)
+int getHitboxDamageWindowRemainingTicks(ICustomNpc npc, String hitboxName)
+String[] getActiveHitboxDamageWindows(ICustomNpc npc)
+```
+
+这组 API 也可以直接通过 `e.npc` 调用，此时无需传入第一个 `npc` 参数：
+
+```javascript
+e.npc.cancelHitboxDamageWindow("hds_sword");
+e.npc.cancelAllHitboxDamageWindows();
+e.npc.isHitboxDamageWindowActive("hds_sword");
+e.npc.getHitboxDamageWindowRemainingTicks("hds_sword");
+var names = Java.from(e.npc.getActiveHitboxDamageWindows());
+```
+
+单窗口中断成功时返回 `true`；窗口不存在、已到期或参数无效时返回 `false`。全部中断返回实际取消的活动窗口数量。剩余时间在窗口不存在或已到期时为 `0`，活动窗口名称同样按基础骨骼名排序。
+
+例如，动画提前结束或攻击被打断时关闭剑的伤害窗口：
+
+```javascript
+function interruptSwordAttack(npc) {
+    if (ImmersiveBossAPI.isHitboxDamageWindowActive(npc, "hds_sword")) {
+        return ImmersiveBossAPI.cancelHitboxDamageWindow(npc, "hds_sword");
+    }
+    return false;
+}
+
+function resetAttackState(npc) {
+    var canceled = ImmersiveBossAPI.cancelAllHitboxDamageWindows(npc);
+    npc.getStoreddata().put("canceledDamageWindows", canceled);
+}
+```
+
+中断会同时丢弃该窗口记录的目标名额、命中次数和重复间隔状态，但不会影响同一 NPC 的其他窗口，也不会撤销已经造成的伤害。窗口查询和控制只在服务端脚本上下文中有效。
+
+### NPC 转向速度限制
+
+可以为大型 NPC 设置水平转向速度上限，使移动、战斗锁定、空闲观察和脚本旋转都逐步到达目标朝向：
+
+```javascript
+function init(e) {
+    e.npc.setTurnSpeedLimit(3.0);
+}
+```
+
+单位为“度/tick”。Minecraft 每秒运行 20 tick，因此 `3.0` 表示每秒最多旋转 `60` 度，完成一次 180 度转身至少需要 3 秒。该限制同时作用于实体移动朝向、模型身体朝向和头部水平朝向，Gecko 模型及其 OBB 碰撞箱会随身体逐步旋转。导航移动会沿当前允许朝向形成转弯轨迹；朝向与路径偏差较大时，移动速度最低降至原速度的 20%，对准后恢复全速。
+
+可用方法为：
+
+```text
+boolean setTurnSpeedLimit(float degreesPerTick)
+float getTurnSpeedLimit()
+boolean hasTurnSpeedLimit()
+boolean clearTurnSpeedLimit()
+void setRotationImmediate(float rotation)
+```
+
+启用限制后，CNPC 原有的 `setRotation(...)` 会变成渐进转向：
+
+```javascript
+e.npc.setTurnSpeedLimit(2.0);
+e.npc.setRotation(180);          // 以每 tick 最多 2 度逐步转到 180 度
+e.npc.setRotationImmediate(90); // 忽略限制，立即转到 90 度
+```
+
+规则如下：
+
+- `setTurnSpeedLimit(...)` 只接受有限的非负数；成功时返回 `true`。
+- `0` 表示完全冻结水平转向；`180` 及以上实际上不会限制最短角度转向。
+- `getTurnSpeedLimit()` 在没有启用限制时返回 `-1`。
+- `clearTurnSpeedLimit()` 取消限制并丢弃尚未完成的 `setRotation(...)` 目标；确实取消了限制时返回 `true`。
+- `setRotationImmediate(...)` 用于生成、传送或剧情重置，同时对齐实体、身体和头部朝向。
+- 目标接近正后方时会锁定一次左转或右转选择，脱离背后扇区后再解除，避免在两个等长方向之间来回抖动。
+- 限速值保存在 NPC 的持久化数据中，保存并重新载入世界后仍然有效。
+- 限制只改变水平转向速度，不限制头部俯仰角，也不会额外修改 CNPC 的攻击时机。
+
+同一功能也可以通过静态 API 调用，例如 `ImmersiveBossAPI.setTurnSpeedLimit(e.npc, 3.0)`。
 
 ## 数据同步与服务端说明
 
@@ -575,6 +761,16 @@ build/libs/cnpc_immersiveboss-<version>.jar
 ### 可选的 CNPC MoreRenderSuppot
 
 开发环境中，如果 `libs/cnpc_morerendersuppot.jar` 存在，Gradle 会将其作为可选运行时依赖加载。它不属于本模组生产 JAR 的强制依赖，也不应直接放入开发实例的 `run/mods`，因为生产 SRG JAR 未经 ForgeGradle 重映射时可能出现 `NoSuchFieldError`。
+
+### 可选的 TaCZ 兼容
+
+TaCZ 不是本模组的强制依赖。检测到 TaCZ 时，对应兼容 mixin 才会启用：枪械射线会纳入 NPC 的动画 OBB，包括超出原版 AABB 的部分，并将命中部位传给 `damaged(e)` 的 `e.hitboxName`。开发环境可使用 `-PtaczDevRuntime` 挂载测试依赖：
+
+```powershell
+.\gradlew.bat runClient -PtaczDevRuntime
+```
+
+当前兼容代码按 TaCZ `1.1.8-hotfix` API 开发；其他版本应在实际游戏中验证。
 
 ## 许可证
 

@@ -5,6 +5,7 @@ import com.goodbird.cnpcgeckoaddon.entity.EntityCustomModel;
 import net.minecraft.client.Minecraft;
 import net.minecraft.server.packs.resources.ResourceManager;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -40,11 +41,6 @@ public abstract class MixinRenderCustomModel {
 
         ResourceManager resourceManager = Minecraft.getInstance().getResourceManager();
         List<GeoHitboxDef> hitboxDefs = GeoHitboxParser.parse(animatable.modelResLoc, resourceManager);
-        if (hitboxDefs.isEmpty()) {
-            GeoHitboxParser.invalidate(animatable.modelResLoc);
-            hitboxDefs = GeoHitboxParser.parse(animatable.modelResLoc, resourceManager);
-        }
-        if (hitboxDefs.isEmpty()) return;
 
         if (animatable.owner != null) {
             int npcId = animatable.owner.getId();
@@ -54,10 +50,21 @@ public abstract class MixinRenderCustomModel {
                     npcId, animatable.modelResLoc.toString(), hitboxDefs));
             }
         }
+        if (hitboxDefs.isEmpty()) {
+            cnpc_multihitbox$clearObbs(animatable);
+            return;
+        }
 
         GeoModel<EntityCustomModel> model = ((RenderCustomModel) (Object) this).getGeoModel();
         if (model == null) return;
-        BakedGeoModel bakedModel = model.getBakedModel(animatable.modelResLoc);
+        BakedGeoModel bakedModel;
+        try {
+            bakedModel = model.getBakedModel(animatable.modelResLoc);
+        } catch (RuntimeException ignored) {
+            // A removed or malformed model must not throw once per NPC per frame.
+            cnpc_multihitbox$clearObbs(animatable);
+            return;
+        }
         if (bakedModel == null) return;
 
         for (GeoHitboxDef def : hitboxDefs) {
@@ -83,10 +90,26 @@ public abstract class MixinRenderCustomModel {
         int npcId = animatable.owner.getId();
         Map<String, OBB> boneObbs = OBBRenderCapture.finish(animatable);
 
-        if (boneObbs.isEmpty()) return;
+        if (boneObbs.isEmpty()) {
+            cnpc_multihitbox$clearObbs(animatable);
+            return;
+        }
         if (animatable.owner instanceof IOBBHolder holder) {
             holder.cnpc_immersiveboss$setBoneOBBs(boneObbs);
         }
+        ClientHitboxData.markObbsActive(npcId);
         NetworkHandler.sendToServer(new SyncOBBPacket(npcId, boneObbs));
+    }
+
+    @Unique
+    private static void cnpc_multihitbox$clearObbs(EntityCustomModel animatable) {
+        if (animatable.owner == null) return;
+        int npcId = animatable.owner.getId();
+        if (animatable.owner instanceof IOBBHolder holder) {
+            holder.cnpc_immersiveboss$setBoneOBBs(Map.of());
+        }
+        if (ClientHitboxData.shouldSyncEmptyObbs(npcId)) {
+            NetworkHandler.sendToServer(new SyncOBBPacket(npcId, Map.of()));
+        }
     }
 }

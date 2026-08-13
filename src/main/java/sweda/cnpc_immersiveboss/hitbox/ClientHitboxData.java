@@ -3,8 +3,11 @@ package sweda.cnpc_immersiveboss.hitbox;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Client-side storage for hitbox definitions.
@@ -18,6 +21,8 @@ public final class ClientHitboxData {
     private static final Map<Integer, List<GeoHitboxDef>> DATA = new HashMap<>();
     /** Models already synced to the server (client → server SyncHitboxPacket state). */
     private static final Map<Integer, ResourceLocation> SYNCED_MODELS = new HashMap<>();
+    /** NPCs whose latest render produced non-empty OBBs. */
+    private static final Set<Integer> ACTIVE_OBBS = new HashSet<>();
 
     private ClientHitboxData() {}
 
@@ -46,16 +51,39 @@ public final class ClientHitboxData {
 
     /** Returns cached defs only if they belong to the given model; null otherwise. */
     public static List<GeoHitboxDef> getForModel(int entityId, ResourceLocation model) {
+        if (!DATA.containsKey(entityId)) return null;
         ResourceLocation stored = MODELS.get(entityId);
-        if (stored == null || model == null || stored.equals(model)) {
+        if (Objects.equals(stored, model)) {
             return DATA.get(entityId);
         }
         return null;
+    }
+
+    public static void markObbsActive(int entityId) {
+        ACTIVE_OBBS.add(entityId);
+    }
+
+    /** Returns true only for the transition from non-empty OBBs to empty. */
+    public static boolean shouldSyncEmptyObbs(int entityId) {
+        return ACTIVE_OBBS.remove(entityId);
+    }
+
+    public static Map<Integer, ResourceLocation> snapshotModels() {
+        return new HashMap<>(MODELS);
+    }
+
+    /** Clears all client hitbox state after a resource-manager reload. */
+    public static void clearAll() {
+        DATA.clear();
+        MODELS.clear();
+        SYNCED_MODELS.clear();
+        ACTIVE_OBBS.clear();
     }
 
     public static void remove(int entityId) {
         DATA.remove(entityId);
         MODELS.remove(entityId);
         SYNCED_MODELS.remove(entityId);
+        ACTIVE_OBBS.remove(entityId);
     }
 }

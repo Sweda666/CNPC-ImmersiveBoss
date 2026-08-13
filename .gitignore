@@ -33,9 +33,12 @@ src/generated/
 bin/
 
 # Local launcher script
-startOpenCode..bat
+start*.bat
 
-# Local AI-workflow instruction file (not for distribution)
+# Optional local runtime compatibility mod
+libs/cnpc_morerendersuppot.jar
+
+# Local workflow instruction file (not for distribution)
 AGENTS.md
 
 # Stray decompiled scratch file from CustomNPCs (analysis only, not project code)

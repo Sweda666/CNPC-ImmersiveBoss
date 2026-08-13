@@ -16,5 +16,8 @@
   "cnpc_immersiveboss.gui.help_texture": "Texture: modid:textures/xxx.png | Color: hex e.g. FF0000",
   "cnpc_immersiveboss.gui.help_ranges": "Offset: -200~200 | Scale: 0.1~2.0 | Size: 16~1024",
   "cnpc_immersiveboss.bossbar.mode_customize": "Show Custom",
-  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Show Custom (Attacking)"
+  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Show Custom (Attacking)",
+  "cnpc_immersiveboss.rotation.enabled": "Limit Rotation",
+  "cnpc_immersiveboss.rotation.speed": "Turn Speed (deg/t)",
+  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "Minimum Nav Speed"
 }

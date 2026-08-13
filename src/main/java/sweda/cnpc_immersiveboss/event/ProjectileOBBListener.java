@@ -47,14 +47,10 @@ public class ProjectileOBBListener {
     private static final double TRIDENT_DAMP_FACTOR = 0.85;
     /** Server-side: UUID → tick of last trident bounce. Prevents re-damage/re-bounce while the trident is still inside the boss. */
     private static final Map<UUID, Long> BOUNCED_TRIDENTS = new ConcurrentHashMap<>();
-    /** World-spanning AABB for per-dimension trident lookups (1.20.1 has no AABB.INFINITE). */
-    private static final AABB INFINITE_BOX = new AABB(
-        Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY,
-        Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
     /**
-     * Pierce-arrow damage dedup: arrow UUID → NPC ids this bolt already damaged.
-     * Kept in sync across both damage paths (vanilla AABB hits and this scan's
-     * OBB-only hits) so a piercing bolt damages each NPC exactly once.
+     * Projectile damage dedup: projectile UUID → NPC ids already damaged.
+     * Shared by vanilla piercing arrows, the OBB fallback scan and optional
+     * integrations whose native hit path runs before ServerTickEvent.END.
      */
     private static final Map<UUID, PierceDamageEntry> PIERCE_DAMAGED = new ConcurrentHashMap<>();
     /** How long a pierce-dedup entry is kept after its last hit before being GC'd. */
@@ -73,6 +69,16 @@ public class ProjectileOBBListener {
         PierceDamageEntry entry = PIERCE_DAMAGED.computeIfAbsent(proj.getUUID(), k -> new PierceDamageEntry());
         entry.lastHitTick = tick;
         return entry.npcIds.add(npcId);
+    }
+
+    /** Records damage dealt by a projectile's native hit path before the fallback scan runs. */
+    public static void recordNativeProjectileDamage(Projectile proj, int npcId) {
+        recordPierceDamage(proj, npcId, proj.level().getGameTime());
+    }
+
+    private static boolean hasDamagedNpc(Projectile proj, int npcId) {
+        PierceDamageEntry entry = PIERCE_DAMAGED.get(proj.getUUID());
+        return entry != null && entry.npcIds.contains(npcId);
     }
 
     @SubscribeEvent
@@ -98,7 +104,8 @@ public class ProjectileOBBListener {
 
         // Fast projectiles (crossbow bolts) can jump several blocks per tick —
         // subdivide the segment so thin OBBs are not skipped.
-        String hitBone = testRaySegmented(relObbs, pos, rayStart, rayEnd);
+        ProjectileHit hitboxHit = raycastHitboxes(relObbs, pos, rayStart, rayEnd);
+        String hitBone = hitboxHit != null ? hitboxHit.hitboxName : null;
 
         if (hitBone != null && target instanceof IOBBHolder h) {
             h.cnpc_immersiveboss$setLastHitboxName(hitBone);
@@ -157,11 +164,23 @@ public class ProjectileOBBListener {
         }
 
         for (ServerLevel level : event.getServer().getAllLevels()) {
+            List<Projectile> activeProjectiles = new ArrayList<>();
+            List<EntityNPCInterface> hitboxNpcs = new ArrayList<>();
+            for (Entity entity : level.getAllEntities()) {
+                if (entity instanceof Projectile projectile && projectile.isAlive()) {
+                    activeProjectiles.add(projectile);
+                }
+                if (entity instanceof EntityNPCInterface npc && entity instanceof IOBBHolder) {
+                    hitboxNpcs.add(npc);
+                }
+            }
+
             // Trident bounce damping: while a bounced trident is still in its damping
             // window, bleed its speed every tick so it stops a short distance away
             // instead of flying off at full bounce speed.
             if (!BOUNCED_TRIDENTS.isEmpty()) {
-                for (ThrownTrident t : level.getEntitiesOfClass(ThrownTrident.class, INFINITE_BOX)) {
+                for (Projectile projectile : activeProjectiles) {
+                    if (!(projectile instanceof ThrownTrident t)) continue;
                     Long bounceTick = BOUNCED_TRIDENTS.get(t.getUUID());
                     if (bounceTick == null) continue;
                     long since = tick - bounceTick;
@@ -173,9 +192,9 @@ public class ProjectileOBBListener {
                 }
             }
 
-            for (Entity entity : level.getAllEntities()) {
-                if (!(entity instanceof EntityNPCInterface npc)) continue;
-                if (!(entity instanceof IOBBHolder holder)) continue;
+            for (EntityNPCInterface npc : hitboxNpcs) {
+                Entity entity = npc;
+                IOBBHolder holder = (IOBBHolder) entity;
 
                 Map<String, OBB> obbs = holder.cnpc_immersiveboss$getBoneOBBs();
                 if (obbs.isEmpty()) continue;
@@ -188,16 +207,21 @@ public class ProjectileOBBListener {
                     worldObbs.add(new OBB(rel.center.add(pos), rel.halfExtents,
                         rel.axisX, rel.axisY, rel.axisZ));
                 }
-                AABB scanBox = OBBPhysics.enclosingAABB(worldObbs).inflate(1.5);
+                AABB scanBox = OBBPhysics.enclosingAABB(worldObbs).inflate(0.1);
 
-                List<Projectile> projectiles = level.getEntitiesOfClass(Projectile.class, scanBox,
-                    p -> p.isAlive() && !(p.getOwner() == npc));
-                for (Projectile proj : projectiles) {
+                for (Projectile proj : activeProjectiles) {
+                    if (!proj.isAlive() || proj.getOwner() == npc) continue;
                     Vec3 rayStart = new Vec3(proj.xo, proj.yo, proj.zo);
                     Vec3 rayEnd = proj.position();
+                    if (!sweptAABB(proj, rayStart, rayEnd).intersects(scanBox)) continue;
 
-                    String hitBone = testRaySegmented(obbs, pos, rayStart, rayEnd);
-                    if (hitBone == null) continue;
+                    ProjectileHit hitboxHit = raycastHitboxes(obbs, pos, rayStart, rayEnd);
+                    if (hitboxHit == null) continue;
+                    String hitBone = hitboxHit.hitboxName;
+
+                    // A native integration (for example TACZ) already dealt this hit
+                    // during the projectile's own tick. Do not damage it again here.
+                    if (hasDamagedNpc(proj, npc.getId())) continue;
 
                     if (proj instanceof ThrownTrident) {
                         // Never discard a trident — bounce it once (re-hit guard lives
@@ -219,6 +243,7 @@ public class ProjectileOBBListener {
                         continue;
                     }
 
+                    recordPierceDamage(proj, npc.getId(), tick);
                     applyProjectileDamage(npc, proj, hitBone);
                     proj.discard();
                     break;
@@ -304,26 +329,37 @@ public class ProjectileOBBListener {
         return (float) proj.getDeltaMovement().length() * 3.0f;
     }
 
+    private static AABB sweptAABB(Projectile projectile, Vec3 rayStart, Vec3 rayEnd) {
+        return projectile.getBoundingBox()
+            .expandTowards(rayStart.subtract(rayEnd))
+            .inflate(0.1);
+    }
+
     /**
      * Ray from rayStart to rayEnd, subdivided so fast projectiles (crossbow bolts)
      * do not skip thin OBBs between ticks. Returns the first hit bone name or null.
      */
-    private static String testRaySegmented(Map<String, OBB> obbs, Vec3 entityPos,
-                                           Vec3 rayStart, Vec3 rayEnd) {
+    public static ProjectileHit raycastHitboxes(Map<String, OBB> obbs, Vec3 entityPos,
+                                                Vec3 rayStart, Vec3 rayEnd) {
         double dist = rayStart.distanceTo(rayEnd);
         int steps = Math.max(1, (int) Math.ceil(dist / 0.5));
         for (int i = 0; i < steps; i++) {
             double t0 = (double) i / steps;
             double t1 = (double) (i + 1) / steps;
-            String hit = testAllOBBs(obbs, entityPos, rayStart.lerp(rayEnd, t0), rayStart.lerp(rayEnd, t1));
-            if (hit != null) return hit;
+            Vec3 segmentStart = rayStart.lerp(rayEnd, t0);
+            Vec3 segmentEnd = rayStart.lerp(rayEnd, t1);
+            ProjectileHit hit = testAllOBBs(obbs, entityPos, segmentStart, segmentEnd);
+            if (hit != null) {
+                return new ProjectileHit(hit.hitboxName, hit.hitPoint,
+                    rayStart.distanceTo(hit.hitPoint));
+            }
         }
         return null;
     }
 
     /** Tests a ray against attackable OBBs (physical or detectable), preferring physical; returns hit bone name or null. */
-    private static String testAllOBBs(Map<String, OBB> obbs, Vec3 entityPos,
-                                       Vec3 rayStart, Vec3 rayEnd) {
+    private static ProjectileHit testAllOBBs(Map<String, OBB> obbs, Vec3 entityPos,
+                                             Vec3 rayStart, Vec3 rayEnd) {
         double closestPhysical = Double.MAX_VALUE;
         double closestDetectable = Double.MAX_VALUE;
         String hitPhysicalBone = null;
@@ -350,8 +386,33 @@ public class ProjectileOBBListener {
             }
         }
 
-        if (closestPhysical < Double.MAX_VALUE) return GeoHitboxDef.baseBoneName(hitPhysicalBone);
-        if (closestDetectable < Double.MAX_VALUE) return GeoHitboxDef.baseBoneName(hitDetectableBone);
+        if (closestPhysical < Double.MAX_VALUE) {
+            return createHit(GeoHitboxDef.baseBoneName(hitPhysicalBone),
+                rayStart, rayEnd, closestPhysical);
+        }
+        if (closestDetectable < Double.MAX_VALUE) {
+            return createHit(GeoHitboxDef.baseBoneName(hitDetectableBone),
+                rayStart, rayEnd, closestDetectable);
+        }
         return null;
+    }
+
+    private static ProjectileHit createHit(String hitboxName, Vec3 rayStart,
+                                           Vec3 rayEnd, double distance) {
+        double length = rayStart.distanceTo(rayEnd);
+        double fraction = length > 1e-10 ? Math.min(1.0, Math.max(0.0, distance / length)) : 0.0;
+        return new ProjectileHit(hitboxName, rayStart.lerp(rayEnd, fraction), distance);
+    }
+
+    public static final class ProjectileHit {
+        public final String hitboxName;
+        public final Vec3 hitPoint;
+        public final double distance;
+
+        private ProjectileHit(String hitboxName, Vec3 hitPoint, double distance) {
+            this.hitboxName = hitboxName;
+            this.hitPoint = hitPoint;
+            this.distance = distance;
+        }
     }
 }

@@ -6,7 +6,14 @@ import noppes.npcs.api.NpcAPI;
 import noppes.npcs.api.entity.ICustomNpc;
 import noppes.npcs.constants.EnumScriptType;
 import noppes.npcs.entity.EntityNPCInterface;
+import sweda.cnpc_immersiveboss.entity.NpcTurnSpeedManager;
+import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
+import sweda.cnpc_immersiveboss.hitbox.ServerHitboxData;
+
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * Static utility API for CNPC scripts to interact with ImmersiveBoss features.
@@ -30,16 +37,19 @@ import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
  * Optional arguments can be omitted from the end. The complete form is:
  * <pre>
  *   ImmersiveBossAPI.activateHitboxDamage(
- *       npc, "hs_sword", 20, 4.0, 3, 10, 1
+ *       npc, "hs_sword", 0, 20, 4.0, 3, 10, 1,
+ *       function(attacker, target) { attacker.say("Hit " + target.getName()); }
  *   );
  * </pre>
- * This activates {@code hs_sword} for 20 ticks, deals 4 damage, can damage each
- * target up to 3 times at intervals of 10 ticks, and admits only the first target.
+ * This waits 0 ticks, activates {@code hs_sword} for 20 ticks, deals 4 damage,
+ * can damage each target up to 3 times at intervals of 10 ticks, and admits only
+ * the first target. The callback runs after every successful damage application.
  * Non-positive repeat and target limits mean unlimited.
  */
 public final class ImmersiveBossAPI {
 
     public static final int DEFAULT_HITBOX_DAMAGE_DURATION_TICKS = 20;
+    public static final int DEFAULT_HITBOX_DAMAGE_START_DELAY_TICKS = 0;
     public static final float DEFAULT_HITBOX_COLLISION_DAMAGE = 1.0F;
     public static final int DEFAULT_HITBOX_DAMAGE_REPEAT_COUNT = 1;
     public static final int DEFAULT_HITBOX_DAMAGE_REPEAT_INTERVAL_TICKS = 10;
@@ -119,45 +129,123 @@ public final class ImmersiveBossAPI {
         }
     }
 
+    /** Returns every hitbox base bone name defined by the NPC's current model. */
+    public static String[] getHitboxNames(ICustomNpc wrapper) {
+        return getHitboxNames(wrapper, HitboxFilter.ALL);
+    }
+
+    /** Returns hitboxes with physical collision ({@code b} suffix). */
+    public static String[] getPhysicalHitboxNames(ICustomNpc wrapper) {
+        return getHitboxNames(wrapper, HitboxFilter.PHYSICAL);
+    }
+
+    /** Returns attackable/detectable hitboxes (the {@code d} flag). */
+    public static String[] getDetectableHitboxNames(ICustomNpc wrapper) {
+        return getHitboxNames(wrapper, HitboxFilter.DETECTABLE);
+    }
+
+    /** Returns non-physical sensor hitboxes ({@code s} suffix). */
+    public static String[] getSensorHitboxNames(ICustomNpc wrapper) {
+        return getHitboxNames(wrapper, HitboxFilter.SENSOR);
+    }
+
+    /** Returns hitboxes whose geometry is visible (the {@code a} flag). */
+    public static String[] getVisibleHitboxNames(ICustomNpc wrapper) {
+        return getHitboxNames(wrapper, HitboxFilter.VISIBLE);
+    }
+
+    /** Checks a base name or multi-cube internal name against the current model. */
+    public static boolean hasHitbox(ICustomNpc wrapper, String hitboxName) {
+        String normalizedName = normalizeHitboxName(hitboxName);
+        if (normalizedName == null) return false;
+        for (String name : getHitboxNames(wrapper)) {
+            if (name.equals(normalizedName)) return true;
+        }
+        return false;
+    }
+
     /**
-     * Activates collision damage for one hitbox using all default options.
+     * Activates collision damage after the required delay, using all other defaults.
      * <pre>
-     *   ImmersiveBossAPI.activateHitboxDamage(npc, "hs_sword");
+     *   ImmersiveBossAPI.activateHitboxDamage(npc, "hs_sword", 0);
      * </pre>
      */
-    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName) {
-        return activateHitboxDamage(wrapper, hitboxName,
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks,
             DEFAULT_HITBOX_DAMAGE_DURATION_TICKS);
     }
 
-    /** Activates collision damage with a custom duration in ticks. */
+    /** Activates collision damage after a custom delay and runs a callback after each hit. */
     public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
-                                               int durationTicks) {
-        return activateHitboxDamage(wrapper, hitboxName, durationTicks,
+                                               int startDelayTicks,
+                                               HitboxDamageCallback callback) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks,
+            DEFAULT_HITBOX_DAMAGE_DURATION_TICKS, callback);
+    }
+
+    /** Activates collision damage with a custom start delay and duration in ticks. */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks, int durationTicks) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
             DEFAULT_HITBOX_COLLISION_DAMAGE);
     }
 
-    /** Activates collision damage with a custom duration and damage amount. */
     public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
-                                               int durationTicks, float damage) {
-        return activateHitboxDamage(wrapper, hitboxName, durationTicks, damage,
+                                               int startDelayTicks, int durationTicks,
+                                               HitboxDamageCallback callback) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
+            DEFAULT_HITBOX_COLLISION_DAMAGE, callback);
+    }
+
+    /** Activates collision damage with a custom delay, duration, and damage amount. */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks, int durationTicks,
+                                               float damage) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks, damage,
             DEFAULT_HITBOX_DAMAGE_REPEAT_COUNT);
+    }
+
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks, int durationTicks,
+                                               float damage, HitboxDamageCallback callback) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks, damage,
+            DEFAULT_HITBOX_DAMAGE_REPEAT_COUNT, callback);
     }
 
     /** Activates collision damage with a per-target repeat limit. Non-positive means unlimited. */
     public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
-                                               int durationTicks, float damage,
-                                               int repeatCount) {
-        return activateHitboxDamage(wrapper, hitboxName, durationTicks, damage, repeatCount,
+                                               int startDelayTicks, int durationTicks,
+                                               float damage, int repeatCount) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
+            damage, repeatCount,
             DEFAULT_HITBOX_DAMAGE_REPEAT_INTERVAL_TICKS);
+    }
+
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks, int durationTicks,
+                                               float damage, int repeatCount,
+                                               HitboxDamageCallback callback) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
+            damage, repeatCount, DEFAULT_HITBOX_DAMAGE_REPEAT_INTERVAL_TICKS, callback);
     }
 
     /** Activates collision damage with a repeat interval in ticks. */
     public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
-                                               int durationTicks, float damage,
+                                               int startDelayTicks, int durationTicks, float damage,
                                                int repeatCount, int repeatIntervalTicks) {
-        return activateHitboxDamage(wrapper, hitboxName, durationTicks, damage, repeatCount,
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
+            damage, repeatCount,
             repeatIntervalTicks, DEFAULT_HITBOX_DAMAGE_MAX_TARGETS);
+    }
+
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks, int durationTicks, float damage,
+                                               int repeatCount, int repeatIntervalTicks,
+                                               HitboxDamageCallback callback) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
+            damage, repeatCount, repeatIntervalTicks, DEFAULT_HITBOX_DAMAGE_MAX_TARGETS,
+            callback);
     }
 
     /**
@@ -167,13 +255,151 @@ public final class ImmersiveBossAPI {
      * @return true when the damage window was created; false for invalid input or client-side use
      */
     public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
-                                               int durationTicks, float damage,
+                                               int startDelayTicks, int durationTicks, float damage,
                                                int repeatCount, int repeatIntervalTicks,
                                                int maxTargets) {
+        return activateHitboxDamage(wrapper, hitboxName, startDelayTicks, durationTicks,
+            damage, repeatCount, repeatIntervalTicks, maxTargets, null);
+    }
+
+    /**
+     * Complete collision-damage window form. The callback receives CNPC wrappers for
+     * the attacking NPC and damaged target after every successful damage application.
+     */
+    public static boolean activateHitboxDamage(ICustomNpc wrapper, String hitboxName,
+                                               int startDelayTicks, int durationTicks, float damage,
+                                               int repeatCount, int repeatIntervalTicks,
+                                               int maxTargets, HitboxDamageCallback callback) {
         if (wrapper == null) return false;
         Entity entity = wrapper.getMCEntity();
         if (!(entity instanceof EntityNPCInterface npc)) return false;
-        return HitboxDamageManager.activate(npc, hitboxName, durationTicks, damage,
-            repeatCount, repeatIntervalTicks, maxTargets);
+        return HitboxDamageManager.activate(npc, hitboxName, startDelayTicks, durationTicks,
+            damage, repeatCount, repeatIntervalTicks, maxTargets, callback);
+    }
+
+    /** Interrupts one damage window. Returns false if it was not active. */
+    public static boolean cancelHitboxDamageWindow(ICustomNpc wrapper, String hitboxName) {
+        EntityNPCInterface npc = getNpc(wrapper);
+        return npc != null && HitboxDamageManager.cancel(npc, hitboxName);
+    }
+
+    /** Interrupts every active damage window and returns the number canceled. */
+    public static int cancelAllHitboxDamageWindows(ICustomNpc wrapper) {
+        EntityNPCInterface npc = getNpc(wrapper);
+        return npc != null ? HitboxDamageManager.cancelAll(npc) : 0;
+    }
+
+    public static boolean isHitboxDamageWindowActive(ICustomNpc wrapper, String hitboxName) {
+        EntityNPCInterface npc = getNpc(wrapper);
+        return npc != null && HitboxDamageManager.isActive(npc, hitboxName);
+    }
+
+    /** Returns zero when the damage window is absent or expired. */
+    public static int getHitboxDamageWindowRemainingTicks(ICustomNpc wrapper, String hitboxName) {
+        EntityNPCInterface npc = getNpc(wrapper);
+        return npc != null ? HitboxDamageManager.getRemainingTicks(npc, hitboxName) : 0;
+    }
+
+    /** Returns all active damage-window base bone names in deterministic order. */
+    public static String[] getActiveHitboxDamageWindows(ICustomNpc wrapper) {
+        EntityNPCInterface npc = getNpc(wrapper);
+        return npc != null ? HitboxDamageManager.getActiveHitboxNames(npc) : new String[0];
+    }
+
+    /** Sets the maximum horizontal turn in degrees per tick. Zero freezes turning. */
+    public static boolean setTurnSpeedLimit(ICustomNpc wrapper, float degreesPerTick) {
+        return NpcTurnSpeedManager.setLimit(wrapper, degreesPerTick);
+    }
+
+    /** Returns {@code -1} when this NPC has no turn-speed limit. */
+    public static float getTurnSpeedLimit(ICustomNpc wrapper) {
+        return NpcTurnSpeedManager.getLimit(wrapper);
+    }
+
+    public static boolean hasTurnSpeedLimit(ICustomNpc wrapper) {
+        return NpcTurnSpeedManager.hasLimit(wrapper);
+    }
+
+    public static boolean setTurnSpeedLimitEnabled(ICustomNpc wrapper, boolean enabled) {
+        return NpcTurnSpeedManager.setEnabled(wrapper, enabled);
+    }
+
+    /** Removes the turn-speed limit and any queued gradual rotation target. */
+    public static boolean clearTurnSpeedLimit(ICustomNpc wrapper) {
+        return NpcTurnSpeedManager.clearLimit(wrapper);
+    }
+
+    /** Returns the navigation speed floor as a value from zero to one. */
+    public static float getMinimumNavigationSpeedScale(ICustomNpc wrapper) {
+        return NpcTurnSpeedManager.getMinimumNavigationSpeedScale(wrapper);
+    }
+
+    /** Sets the navigation speed floor as a value from zero to one. */
+    public static boolean setMinimumNavigationSpeedScale(ICustomNpc wrapper, float scale) {
+        return NpcTurnSpeedManager.setMinimumNavigationSpeedScale(wrapper, scale);
+    }
+
+    /** Immediately aligns entity, body, and head yaw, bypassing the active limit. */
+    public static void setRotationImmediate(ICustomNpc wrapper, float rotation) {
+        NpcTurnSpeedManager.setRotationImmediate(wrapper, rotation);
+    }
+
+    private static String[] getHitboxNames(ICustomNpc wrapper, HitboxFilter filter) {
+        EntityNPCInterface npc = getNpc(wrapper);
+        if (npc == null) return new String[0];
+
+        Map<String, GeoHitboxDef.Type> hitboxes = new TreeMap<>();
+        List<GeoHitboxDef> defs = npc.level().isClientSide
+            ? null
+            : ServerHitboxData.getOrLoadForNpc(npc);
+        if (defs != null) {
+            for (GeoHitboxDef def : defs) {
+                addHitboxType(hitboxes, def.boneName);
+            }
+        } else if (npc instanceof IOBBHolder holder) {
+            // Live OBBs are a fallback for client-side calls or unavailable defs.
+            for (String name : holder.cnpc_immersiveboss$getBoneOBBs().keySet()) {
+                addHitboxType(hitboxes, name);
+            }
+        }
+
+        return hitboxes.entrySet().stream()
+            .filter(entry -> filter.matches(entry.getValue()))
+            .map(Map.Entry::getKey)
+            .toArray(String[]::new);
+    }
+
+    private static void addHitboxType(Map<String, GeoHitboxDef.Type> hitboxes, String name) {
+        String baseName = GeoHitboxDef.baseBoneName(name);
+        GeoHitboxDef.Type type = GeoHitboxDef.classify(baseName);
+        if (type != null) hitboxes.putIfAbsent(baseName, type);
+    }
+
+    private static EntityNPCInterface getNpc(ICustomNpc wrapper) {
+        if (wrapper == null) return null;
+        Entity entity = wrapper.getMCEntity();
+        return entity instanceof EntityNPCInterface npc ? npc : null;
+    }
+
+    private static String normalizeHitboxName(String hitboxName) {
+        if (hitboxName == null) return null;
+        String trimmed = hitboxName.trim();
+        if (trimmed.isEmpty()) return null;
+        String baseName = GeoHitboxDef.baseBoneName(trimmed);
+        return GeoHitboxDef.classify(baseName) != null ? baseName : null;
+    }
+
+    private enum HitboxFilter {
+        ALL, PHYSICAL, DETECTABLE, SENSOR, VISIBLE;
+
+        private boolean matches(GeoHitboxDef.Type type) {
+            return switch (this) {
+                case ALL -> true;
+                case PHYSICAL -> type.physical;
+                case DETECTABLE -> type.detectable;
+                case SENSOR -> !type.physical;
+                case VISIBLE -> type.render;
+            };
+        }
     }
 }

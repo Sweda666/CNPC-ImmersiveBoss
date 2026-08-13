@@ -16,5 +16,8 @@
   "cnpc_immersiveboss.gui.help_texture": "Текстура: modid:textures/xxx.png | Цвет: hex FF0000",
   "cnpc_immersiveboss.gui.help_ranges": "Смещение: -200~200 | Масштаб: 0.1~2.0 | Размер: 16~1024",
   "cnpc_immersiveboss.bossbar.mode_customize": "Показать свой",
-  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Показать свой (в бою)"
+  "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Показать свой (в бою)",
+  "cnpc_immersiveboss.rotation.enabled": "Ограничить поворот",
+  "cnpc_immersiveboss.rotation.speed": "Поворот (град./тик)",
+  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "Мин. скорость пути"
 }
