@@ -48,4 +48,4 @@ TaCZ 开发运行环境：
 
 修改碰撞逻辑后至少验证：玩家近战、交互、箭/三叉戟、大型 AABB 外 OBB、传感器不推挤、两个 OBB NPC 相交、NPC 死亡/移除清理。修改网络载荷不兼容时同步提升协议版本，并验证客户端与独立服务端。
 
-[上一页：常见问题](Troubleshooting.md) · [返回 Wiki 首页](Home.md)
+[上一页：常见问题](Troubleshooting) · [返回 Wiki 首页](Home)

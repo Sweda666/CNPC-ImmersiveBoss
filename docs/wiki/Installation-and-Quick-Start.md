@@ -36,10 +36,10 @@ function damaged(e) {
 }
 ```
 
-`hdb_body` 中的 `d` 表示可被准星、攻击和交互检测，`b` 表示参与实体推挤。需要更多类型时继续阅读[碰撞箱建模](Hitbox-Modeling.md)。
+`hdb_body` 中的 `d` 表示可被准星、攻击和交互检测，`b` 表示参与实体推挤。需要更多类型时继续阅读[碰撞箱建模](Hitbox-Modeling)。
 
 ## 资源重载
 
 修改模型后使用 `F3+T` 重载资源包，并让 NPC 重新进入渲染范围。模型定义来自客户端资源包；多人服务器上只修改服务端文件不会更新玩家看到和同步的 OBB。
 
-[返回 Wiki 首页](Home.md) · [下一页：碰撞箱建模](Hitbox-Modeling.md)
+[返回 Wiki 首页](Home) · [下一页：碰撞箱建模](Hitbox-Modeling)

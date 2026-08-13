@@ -64,4 +64,4 @@ h[a][d][b|s]_名称
 - 大型模型需要远离 NPC 原点仍可选中的部位必须带 `d`。
 - OBB 越多，实体重叠与 OBB 对 OBB 检测成本越高；不要用大量小 cube 描摹纯视觉细节。
 
-[上一页：安装](Installation-and-Quick-Start.md) · [下一页：战斗与交互](Combat-and-Interaction.md)
+[上一页：安装](Installation-and-Quick-Start) · [下一页：战斗与交互](Combat-and-Interaction)

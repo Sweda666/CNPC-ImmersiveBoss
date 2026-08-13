@@ -115,6 +115,6 @@ function init(e) {
 
 单位是度/tick。`3.0` 相当于每秒最多 60 度；`0` 完全冻结水平转向。导航前进方向会受当前朝向约束，转向误差较大时速度最低降到 20%，对准后恢复全速；目标位于正后方时会稳定选择一个方向完成转身，不会在左右两边反复切换。`getTurnSpeedLimit()` 无限制时返回 `-1`，`clearTurnSpeedLimit()` 取消限制，`setRotationImmediate(angle)` 可绕过限制立即对齐身体和头部。限速值会随 NPC 保存。
 
-README 的 [ImmersiveBossAPI 章节](../../README.md#immersivebossapi)列出了全部重载、计数与清理规则。
+README 的 [ImmersiveBossAPI 章节](https://github.com/Sweda666/CNPC-ImmersiveBoss/blob/ce-addon/README.md#immersivebossapi)列出了全部重载、计数与清理规则。
 
-[上一页：自定义 Boss 血条](Custom-Boss-Bar.md) · [下一页：常见问题](Troubleshooting.md)
+[上一页：自定义 Boss 血条](Custom-Boss-Bar) · [下一页：常见问题](Troubleshooting)

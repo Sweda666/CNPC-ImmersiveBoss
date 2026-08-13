@@ -57,4 +57,4 @@
 
 复现后保留游戏版本、四个必要依赖的完整文件名、资源包、`logs/latest.log` 和 `crash-reports/` 中的新报告。说明问题涉及近战、交互、哪类弹射物、哪个骨骼名，以及 `F3+B` 显示的颜色和位置。
 
-[上一页：脚本 API](Scripting-API.md) · [下一页：开发者指南](Development.md)
+[上一页：脚本 API](Scripting-API) · [下一页：开发者指南](Development)

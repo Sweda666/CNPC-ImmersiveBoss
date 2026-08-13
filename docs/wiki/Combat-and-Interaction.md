@@ -40,6 +40,6 @@ function interact(e) {
 
 ## 动画攻击
 
-对剑、尾巴等动画骨骼，使用 `activateHitboxDamage` 在有效帧打开伤害窗口。该窗口通过 `mobAttack` 伤害源结算，会经过护甲、无敌帧和事件取消；窗口可以延迟启动、重复命中、限制目标数并在命中后回调。完整示例见[脚本 API](Scripting-API.md)。
+对剑、尾巴等动画骨骼，使用 `activateHitboxDamage` 在有效帧打开伤害窗口。该窗口通过 `mobAttack` 伤害源结算，会经过护甲、无敌帧和事件取消；窗口可以延迟启动、重复命中、限制目标数并在命中后回调。完整示例见[脚本 API](Scripting-API)。
 
-[上一页：碰撞箱建模](Hitbox-Modeling.md) · [下一页：自定义 Boss 血条](Custom-Boss-Bar.md)
+[上一页：碰撞箱建模](Hitbox-Modeling) · [下一页：自定义 Boss 血条](Custom-Boss-Bar)

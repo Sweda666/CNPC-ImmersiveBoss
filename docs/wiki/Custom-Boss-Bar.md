@@ -55,4 +55,4 @@ GUI 中填写 `mypack:textures/gui/bossbar.png`，不要填写磁盘路径或 `a
 - 颜色填写 `FF4040`，不要带 `#`。
 - 资源修改后按 `F3+T` 重载。
 
-[上一页：战斗与交互](Combat-and-Interaction.md) · [下一页：脚本 API](Scripting-API.md)
+[上一页：战斗与交互](Combat-and-Interaction) · [下一页：脚本 API](Scripting-API)

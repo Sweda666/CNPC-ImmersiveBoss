@@ -6,13 +6,13 @@ CNPC-ImmersiveBoss 为 CustomNPCs 与 CNPC Gecko Addon 的 GeckoLib NPC 提供�
 
 ## 从这里开始
 
-1. [安装与快速开始](Installation-and-Quick-Start.md)：安装依赖并验证第一个 OBB。
-2. [碰撞箱建模](Hitbox-Modeling.md)：理解骨骼命名、Blockbench 坐标和多 cube 规则。
-3. [战斗与交互](Combat-and-Interaction.md)：了解攻击、弹射物、交互、传感器和推挤。
-4. [自定义 Boss 血条](Custom-Boss-Bar.md)：准备 PNG 素材并在 NPC GUI 中配置。
-5. [脚本 API](Scripting-API.md)：编写 `damaged`、`interact`、`collide` 与攻击窗口脚本。
-6. [常见问题](Troubleshooting.md)：使用 `F3+B` 和日志定位问题。
-7. [开发者指南](Development.md)：构建、运行以及修改 mixin 时的注意事项。
+1. [安装与快速开始](Installation-and-Quick-Start)：安装依赖并验证第一个 OBB。
+2. [碰撞箱建模](Hitbox-Modeling)：理解骨骼命名、Blockbench 坐标和多 cube 规则。
+3. [战斗与交互](Combat-and-Interaction)：了解攻击、弹射物、交互、传感器和推挤。
+4. [自定义 Boss 血条](Custom-Boss-Bar)：准备 PNG 素材并在 NPC GUI 中配置。
+5. [脚本 API](Scripting-API)：编写 `damaged`、`interact`、`collide` 与攻击窗口脚本。
+6. [常见问题](Troubleshooting)：使用 `F3+B` 和日志定位问题。
+7. [开发者指南](Development)：构建、运行以及修改 mixin 时的注意事项。
 
 ## 功能速览
 
@@ -30,4 +30,4 @@ CNPC-ImmersiveBoss 为 CustomNPCs 与 CNPC Gecko Addon 的 GeckoLib NPC 提供�
 
 客户端和服务端必须安装相同版本的本模组及必要依赖。模型定义由客户端资源管理器读取，动画 OBB 和血条状态通过网络同步，因此本模组不能只安装在单侧。资源包也应向所有玩家分发。
 
-项目首页与完整单页参考见仓库 [README](../../README.md)。
+项目首页与完整单页参考见仓库 [README](https://github.com/Sweda666/CNPC-ImmersiveBoss/blob/ce-addon/README.md)。
