@@ -41,7 +41,8 @@ public abstract class MixinSubGuiNpcMovement {
     @Unique
     private boolean cnpc_immersiveboss$useRightColumn;
 
-    @Inject(method = "init", at = @At("HEAD"), remap = false, require = 0)
+    @Inject(method = {"init()V", "m_7856_()V"}, at = @At("HEAD"),
+        remap = false, require = 0)
     private void cnpc_immersiveboss$resizeMovementSettings(CallbackInfo ci) {
         SubGuiNpcMovement gui = cnpc_immersiveboss$self();
         // Wandering and path movement fill the original column down to the Done button.
@@ -51,7 +52,8 @@ public abstract class MixinSubGuiNpcMovement {
             : cnpc_immersiveboss$BASE_WIDTH;
     }
 
-    @Inject(method = "init", at = @At("TAIL"), remap = false, require = 0)
+    @Inject(method = {"init()V", "m_7856_()V"}, at = @At("TAIL"),
+        remap = false, require = 0)
     private void cnpc_immersiveboss$addRotationSettings(CallbackInfo ci) {
         SubGuiNpcMovement gui = cnpc_immersiveboss$self();
         GuiTextFieldNop movementSpeed = gui.getTextField(14);

@@ -152,6 +152,11 @@ repositories {
 }
 
 dependencies {
+    // These switches verify optional runtime combinations without moving files
+    // in libs/: -PwithoutCombatMods skips Better Combat/Iron's Spellbooks and
+    // their support mods; -PwithoutOptionalMods also skips TACZ and MoreRenderSuppot.
+    def optionalModsEnabled = !project.hasProperty('withoutOptionalMods')
+    def combatModsEnabled = optionalModsEnabled && !project.hasProperty('withoutCombatMods')
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
     // The "userdev" classifier will be requested and setup by ForgeGradle.
@@ -175,7 +180,7 @@ dependencies {
     // Optional TACZ integration: compile against its public classes without
     // bundling it or requiring it at runtime. Enable in dev with -PtaczDevRuntime.
     compileOnly fg.deobf("curse.maven:timeless-and-classics-zero-1028108:8055552-sources-8055584")
-    if (project.hasProperty("taczDevRuntime")) {
+    if (optionalModsEnabled && project.hasProperty("taczDevRuntime")) {
         if (file("待兼容模组/tacz-1.20.1-1.1.8-hotfix.jar").exists()) {
             runtimeOnly fg.deobf("optional:tacz-1.20.1-1.1.8-hotfix:0")
         } else {
@@ -189,8 +194,31 @@ dependencies {
     // 环境加载（裸 jar 进 run/mods 会 NoSuchFieldError）。更新流程：从 CNPC MoreRenderSuppot
     // 项目 gradlew build 后覆盖 libs/cnpc_morerendersuppot.jar，并删除
     // %GRADLE_USER_HOME%\caches\forge_gradle\deobf_dependencies\libs\cnpc_morerendersuppot 缓存。
-    if (file("libs/cnpc_morerendersuppot.jar").exists()) {
+    if (optionalModsEnabled && file("libs/cnpc_morerendersuppot.jar").exists()) {
         runtimeOnly fg.deobf("libs:cnpc_morerendersuppot:0")
+    }
+    // Optional combat/magic integrations for the development runtime. These are
+    // deliberately conditional so the project remains standalone when a jar is absent.
+    if (combatModsEnabled && file("libs/bettercombat-forge-1.9.0+1.20.1.jar").exists()) {
+        runtimeOnly fg.deobf("libs:bettercombat-forge-1.9.0+1.20.1:0")
+    }
+    if (combatModsEnabled && file("libs/cloth-config-11.1.118-forge.jar").exists()) {
+        runtimeOnly fg.deobf("libs:cloth-config-11.1.118-forge:0")
+    }
+    if (combatModsEnabled && file("libs/curios-forge-5.14.1+1.20.1.jar").exists()) {
+        runtimeOnly fg.deobf("libs:curios-forge-5.14.1+1.20.1:0")
+    }
+    if (combatModsEnabled && file("libs/caelus-forge-3.2.0+1.20.1.jar").exists()) {
+        runtimeOnly fg.deobf("libs:caelus-forge-3.2.0+1.20.1:0")
+    }
+    if (combatModsEnabled && file("libs/player-animation-lib-forge-1.0.2-rc1+1.20.jar").exists()) {
+        runtimeOnly fg.deobf("libs:player-animation-lib-forge-1.0.2-rc1+1.20:0")
+    }
+    if (combatModsEnabled && file("libs/irons_spellbooks-1.20.1-3.16.2.jar").exists()) {
+        runtimeOnly fg.deobf("libs:irons_spellbooks-1.20.1-3.16.2:0")
+    }
+    if (combatModsEnabled && file("libs/irons_lib-1.20.1-2.1.0.jar").exists()) {
+        runtimeOnly fg.deobf("libs:irons_lib-1.20.1-2.1.0:0")
     }
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html

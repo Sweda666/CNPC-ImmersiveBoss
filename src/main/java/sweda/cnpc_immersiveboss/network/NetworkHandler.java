@@ -3,6 +3,7 @@ package sweda.cnpc_immersiveboss.network;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.simple.SimpleChannel;
 import sweda.cnpc_immersiveboss.network.packet.SyncCustomBossBarPacket;
+import sweda.cnpc_immersiveboss.network.packet.SyncDamageParticlePacket;
 import sweda.cnpc_immersiveboss.network.packet.SyncHitboxPacket;
 import sweda.cnpc_immersiveboss.network.packet.SyncOBBPacket;
 
@@ -30,10 +31,22 @@ public class NetworkHandler {
                 .decoder(SyncOBBPacket::decode)
                 .consumerMainThread(SyncOBBPacket::handle)
                 .add();
+
+        // Keep the pre-existing packet IDs stable; this new packet is appended.
+        INSTANCE.messageBuilder(SyncDamageParticlePacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncDamageParticlePacket::encode)
+                .decoder(SyncDamageParticlePacket::decode)
+                .consumerMainThread(SyncDamageParticlePacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(net.minecraft.server.level.ServerPlayer player, SyncCustomBossBarPacket packet) {
         INSTANCE.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+    }
+
+    public static void sendToTrackingAndSelf(net.minecraft.world.entity.Entity entity,
+                                             SyncDamageParticlePacket packet) {
+        INSTANCE.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity), packet);
     }
 
     public static void sendToServer(SyncHitboxPacket packet) {

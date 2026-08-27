@@ -5,6 +5,8 @@ import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import noppes.npcs.entity.EntityNPCInterface;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.network.NetworkHandler;
+import sweda.cnpc_immersiveboss.network.packet.SyncDamageParticlePacket;
 
 /**
  * Cleans up {@code lastHitboxName} after each damage event to prevent
@@ -25,6 +27,13 @@ public class HitboxDamageListener {
         LivingEntity entity = event.getEntity();
         if (!(entity instanceof EntityNPCInterface)) return;
         if (!(entity instanceof IOBBHolder holder)) return;
+
+        String hitboxName = holder.cnpc_immersiveboss$getLastHitboxName();
+        if (!event.isCanceled() && event.getAmount() > 0.0F && hitboxName != null
+            && !hitboxName.isEmpty() && !entity.level().isClientSide) {
+            NetworkHandler.sendToTrackingAndSelf(entity,
+                new SyncDamageParticlePacket(entity.getId(), hitboxName));
+        }
 
         // Clear the last hitbox name after the damage flow completes.
         // Melee detection ran in Mixin's HEAD of hurt(), projectile name

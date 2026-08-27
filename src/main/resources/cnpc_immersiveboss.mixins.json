@@ -10,11 +10,19 @@
     "MixinDataAI",
     "MixinEntity",
     "MixinEntityNPCInterface",
+    "MixinEventHooks",
     "MixinMoveControl",
     "MixinNPCWrapper",
     "MixinNpcDamagedEvent",
     "MixinNpcInteractEvent",
     "MixinServerGamePacketListenerImpl",
+    "compat.MixinBetterCombatServerNetwork",
+    "compat.MixinIronsAbstractMagicProjectile",
+    "compat.MixinIronsAbstractConeProjectile",
+    "compat.MixinIronsAoeEntity",
+    "compat.MixinIronsChainLightning",
+    "compat.MixinIronsDamageSources",
+    "compat.MixinIronsRaycastBuilder",
     "compat.MixinTaczEntityKineticBullet"
   ],
   "client": [
@@ -23,6 +31,9 @@
     "MixinRenderCustomModel",
     "MixinGeoEntityRenderer",
     "MixinGameRenderer",
+    "MixinParticleEngine",
+    "MixinClientPacketListener",
+    "compat.MixinBetterCombatTargetFinder",
     "GeoBoneAccessor"
   ],
   "injectors": {

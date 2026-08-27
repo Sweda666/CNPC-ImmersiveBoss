@@ -2,7 +2,7 @@
 
 CNPC-ImmersiveBoss 为 CustomNPCs 与 CNPC Gecko Addon 的 GeckoLib NPC 提供随骨骼动画变化的 OBB 多碰撞箱。它让大型或异形 NPC 的受击、交互、弹射物、实体推挤和攻击判定贴合模型，并提供自定义 Boss 血条、分部位脚本事件、碰撞伤害窗口和转向限速 API。
 
-当前文档对应模组版本 `0.3.9`，适用于 Minecraft `1.20.1`、Forge `47.x` 与 Java `17`。
+当前文档对应模组版本 `0.3.11`，适用于 Minecraft `1.20.1`、Forge `47.x` 与 Java `17`。
 
 ## 从这里开始
 

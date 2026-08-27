@@ -11,6 +11,10 @@ import java.util.Set;
 public final class CnpcMixinConfigPlugin implements IMixinConfigPlugin {
     private static final String TACZ_MIXIN_PREFIX =
         "sweda.cnpc_immersiveboss.mixin.compat.MixinTacz";
+    private static final String BETTER_COMBAT_MIXIN_PREFIX =
+        "sweda.cnpc_immersiveboss.mixin.compat.MixinBetterCombat";
+    private static final String IRONS_SPELLBOOKS_MIXIN_PREFIX =
+        "sweda.cnpc_immersiveboss.mixin.compat.MixinIrons";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -24,10 +28,20 @@ public final class CnpcMixinConfigPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         if (mixinClassName.startsWith(TACZ_MIXIN_PREFIX)) {
-            return FMLLoader.getLoadingModList() != null
-                && FMLLoader.getLoadingModList().getModFileById("tacz") != null;
+            return isModLoaded("tacz");
+        }
+        if (mixinClassName.startsWith(BETTER_COMBAT_MIXIN_PREFIX)) {
+            return isModLoaded("bettercombat");
+        }
+        if (mixinClassName.startsWith(IRONS_SPELLBOOKS_MIXIN_PREFIX)) {
+            return isModLoaded("irons_spellbooks");
         }
         return true;
+    }
+
+    private static boolean isModLoaded(String modId) {
+        return FMLLoader.getLoadingModList() != null
+            && FMLLoader.getLoadingModList().getModFileById(modId) != null;
     }
 
     @Override
