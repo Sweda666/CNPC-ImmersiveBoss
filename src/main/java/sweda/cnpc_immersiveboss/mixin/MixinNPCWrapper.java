@@ -309,11 +309,11 @@ public abstract class MixinNPCWrapper implements IHitboxDamageNpc, INpcTurnContr
     @Override
     public boolean startThrow(noppes.npcs.api.entity.IEntity target, String animation,
                               int durationTicks, String struggleMode, Integer difficulty,
-                              boolean returnToCamera,
+                              boolean returnToStart,
                               sweda.cnpc_immersiveboss.api.ThrowCallback onEscape,
                               sweda.cnpc_immersiveboss.api.ThrowCallback onFinish) {
         return ImmersiveBossAPI.startThrow(cnpc_immersiveboss$self(), target,
-            animation, durationTicks, struggleMode, difficulty, returnToCamera,
+            animation, durationTicks, struggleMode, difficulty, returnToStart,
             onEscape, onFinish);
     }
 

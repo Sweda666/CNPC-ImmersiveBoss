@@ -9,6 +9,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import noppes.npcs.entity.EntityCustomNpc;
@@ -46,11 +47,12 @@ public final class ThrowManager {
 
     public static boolean start(EntityNPCInterface npc, Entity target, String animation,
                                 int durationTicks, String struggleMode, Integer difficulty,
-                                boolean returnToCamera, ThrowCallback onEscape, ThrowCallback onFinish) {
+                                boolean returnToStart, ThrowCallback onEscape, ThrowCallback onFinish) {
         if (npc == null || !(target instanceof ServerPlayer player)
             || animation == null || animation.trim().isEmpty()
             || durationTicks <= 0 || npc.level().isClientSide
-            || target.level() != npc.level() || !npc.isAlive() || !target.isAlive()) {
+            || target.level() != npc.level() || !npc.isAlive() || !target.isAlive()
+            || player.isDeadOrDying() || player.getHealth() <= 0.0F) {
             return false;
         }
 
@@ -69,7 +71,7 @@ public final class ThrowManager {
         ThrowState state = new ThrowState(
             ++nextSequence, npc, player, animation.trim(), durationTicks,
             player.position(), player.getDeltaMovement(), player.isNoGravity(),
-            player.getYRot(), player.getXRot(), struggle, returnToCamera, onEscape, onFinish);
+            player.getYRot(), player.getXRot(), struggle, returnToStart, onEscape, onFinish);
         ACTIVE.put(player.getId(), state);
 
         // Reuse the addon's existing animation sync path so every client sees
@@ -100,10 +102,10 @@ public final class ThrowManager {
 
     public static boolean start(EntityNPCInterface npc, Entity target, String animation,
                                 int durationTicks, int struggleMode, int difficulty,
-                                boolean returnToCamera, ThrowCallback onEscape,
+                                boolean returnToStart, ThrowCallback onEscape,
                                 ThrowCallback onFinish) {
         return start(npc, target, animation, durationTicks, String.valueOf(struggleMode),
-            difficulty, returnToCamera, onEscape, onFinish);
+            difficulty, returnToStart, onEscape, onFinish);
     }
 
     public static boolean stop(Entity target) {
@@ -163,13 +165,22 @@ public final class ThrowManager {
 
     private static boolean isValid(ThrowState state) {
         return state.npc.isAlive() && !state.npc.isRemoved() && state.target.isAlive()
-            && !state.target.isRemoved()
+            && !state.target.isRemoved() && !state.target.isDeadOrDying()
+            && state.target.getHealth() > 0.0F
             && state.target.level() == state.level && state.npc.level() == state.level;
     }
 
     @SubscribeEvent
     public static void onLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         stop(event.getEntity());
+    }
+
+    /** Stop immediately when lethal damage starts the player's death sequence. */
+    @SubscribeEvent
+    public static void onLivingDeath(LivingDeathEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            stop(player);
+        }
     }
 
     @SubscribeEvent
@@ -193,7 +204,7 @@ public final class ThrowManager {
         state.target.fallDistance = 0;
         if (state.target.isAlive() && state.target.level() == state.level) {
             state.target.setDeltaMovement(state.previousMotion);
-            if (!state.returnToCamera) {
+            if (state.returnToStart) {
                 state.target.teleportTo(state.previousPosition.x, state.previousPosition.y,
                     state.previousPosition.z);
             }
@@ -244,7 +255,7 @@ public final class ThrowManager {
         private final float previousXRot;
         private final ServerLevel level;
         private final StruggleProgress struggle;
-        private final boolean returnToCamera;
+        private final boolean returnToStart;
         private final ThrowCallback onEscape;
         private final ThrowCallback onFinish;
 
@@ -252,7 +263,7 @@ public final class ThrowManager {
                            String animation, int durationTicks, Vec3 previousPosition,
                            Vec3 previousMotion, boolean previousNoGravity,
                            float previousYRot, float previousXRot, StruggleProgress struggle,
-                           boolean returnToCamera, ThrowCallback onEscape, ThrowCallback onFinish) {
+                           boolean returnToStart, ThrowCallback onEscape, ThrowCallback onFinish) {
             this.sequence = sequence;
             this.npc = npc;
             this.target = target;
@@ -266,7 +277,7 @@ public final class ThrowManager {
             this.previousXRot = previousXRot;
             this.level = target.serverLevel();
             this.struggle = struggle;
-            this.returnToCamera = returnToCamera;
+            this.returnToStart = returnToStart;
             this.onEscape = onEscape;
             this.onFinish = onFinish;
         }

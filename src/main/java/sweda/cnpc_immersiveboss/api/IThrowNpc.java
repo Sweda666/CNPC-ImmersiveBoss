@@ -31,7 +31,7 @@ public interface IThrowNpc {
     boolean startThrow(IEntity target, String animation, int durationTicks, String struggleMode,
                        Integer difficulty, ThrowCallback onEscape, ThrowCallback onFinish);
     boolean startThrow(IEntity target, String animation, int durationTicks, String struggleMode,
-                       Integer difficulty, boolean returnToCamera, ThrowCallback onEscape,
+                       Integer difficulty, boolean returnToStart, ThrowCallback onEscape,
                        ThrowCallback onFinish);
     boolean startThrow(IEntity target, String animation, int durationTicks, boolean returnToStart,
                        int struggleMode, Integer difficulty, ThrowCallback onEscape,

@@ -1,26 +1,50 @@
 # CNPC-ImmersiveBoss
 
-## Throw API (0.4.x)
+## 0.5.8 更新 / Update
 
-The throw API can optionally restore the player's starting position. The new
-boolean is placed before `struggleMode` and defaults to `false` in older
-overloads:
+Version 0.5.8 adds server-authoritative throw animations and completes the
+script-facing combat API. The throw boolean is placed before `struggleMode`
+and defaults to `false` in older overloads:
 
 ```javascript
 ImmersiveBossAPI.startThrow(npc, target, "grab", 60,
     true, "ad", 5, onEscape, onFinish);
 ```
 
-`true` restores the player's position when the throw ends. `false` leaves the
-player at the throw's final server position. The server also suppresses stale
-client movement packets while a throw is active, preventing vanilla's illegal
-movement disconnect during scripted throws.
+`true` restores the player's captured position when the throw ends or is
+escaped; `false` leaves the player at the server-controlled ending position.
+The server also suppresses stale client movement packets while a throw is
+active, preventing vanilla's illegal-movement disconnect during scripted
+throws. Numeric struggle modes are `0` (none), `1` (A/D), `2` (space), and `3`
+(shift).
 
 CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模组。它为 GeckoLib NPC 模型提供可随骨骼动画旋转、移动的 OBB 多碰撞箱，并补充自定义 Boss 血条、分部位受伤、碰撞脚本事件和定时碰撞伤害 API。
 
 本文档对应当前源码版本 `0.5.8`。
 
 > 完整分主题教程见 [Wiki](docs/wiki/Home.md)：[安装与快速开始](docs/wiki/Installation-and-Quick-Start.md) · [碰撞箱建模](docs/wiki/Hitbox-Modeling.md) · [战斗与交互](docs/wiki/Combat-and-Interaction.md) · [自定义 Boss 血条](docs/wiki/Custom-Boss-Bar.md) · [脚本 API（含投技）](docs/wiki/Scripting-API.md) · [常见问题](docs/wiki/Troubleshooting.md)
+
+### 中文
+
+0.5.8 在 OBB、Boss 血条和脚本 API 基础上，进一步扩展战斗兼容性与受击反馈，并加入可由脚本驱动的投技动画：
+
+- 新增 Better Combat 兼容：攻击范围、角度和形状可直接检测 NPC 动画 OBB；客户端补充 OBB 目标，服务端重新验证攻击结果，并保留命中骨骼名称。
+- 新增 Iron’s Spellbooks 兼容：支持法术投射物、锥形法术、范围法术、链式闪电等攻击路径的 OBB 检测；移动投射物支持扫掠检测，并将命中部位传递到 `damaged(e).hitboxName`。
+- 伤害、暴击和伤害指示粒子可定位到实际命中的 OBB；可通过客户端配置 `damageParticlesFollowHitbox` 关闭。
+- Better Combat 和 Iron’s Spellbooks 等兼容模块按需加载；未安装相关模组时，本模组仍可独立运行，并增加了条件 Mixin 与 CNPC 事件回退以提升兼容性。
+- 附带 Blockbench 碰撞箱预览插件，可按碰撞箱属性显示彩色 OBB 边框，并支持隐藏碰撞箱和局部坐标轴预览。
+- 新增服务端权威投技 API：支持抓取动画、A/D 或单键挣扎、结束/挣脱回调和可选的起始位置恢复；NPC 或玩家死亡、退出和换维度时会自动清理状态。
+
+### English
+
+Version 0.5.8 builds on the OBB, custom boss bar, and scripting APIs with expanded combat compatibility, hit feedback, and server-authoritative throw animations:
+
+- Added Better Combat compatibility: attack ranges, angles, and shapes can directly test animated NPC OBBs. OBB targets are added on the client, validated on the server, and the hitbox name is preserved.
+- Added Iron’s Spellbooks compatibility: spell projectiles, cone and area spells, chain lightning, and other native attack paths can use OBB detection. Moving projectiles use swept detection, with the hitbox exposed through `damaged(e).hitboxName`.
+- Damage, critical-hit, and damage-indicator particles can appear at the actual hit OBB. This can be disabled with the client option `damageParticlesFollowHitbox`.
+- Better Combat and Iron’s Spellbooks integrations are loaded only when available. The mod remains standalone without them, with conditional Mixins and CNPC event fallbacks for better compatibility.
+- Added a Blockbench hitbox preview plugin with color-coded OBB outlines, hitbox visibility controls, and local-axis previews.
+- Added scriptable throw animations with struggle modes, callbacks, optional return-to-start placement, and cleanup on death, disconnect, or dimension changes.
 
 ## 文档导航
 

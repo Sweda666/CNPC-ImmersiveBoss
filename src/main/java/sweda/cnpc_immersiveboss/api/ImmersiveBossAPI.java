@@ -124,12 +124,12 @@ public final class ImmersiveBossAPI {
 
     public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
                                      String animation, int durationTicks, String struggleMode,
-                                     Integer difficulty, boolean returnToCamera,
+                                     Integer difficulty, boolean returnToStart,
                                      ThrowCallback onEscape, ThrowCallback onFinish) {
         EntityNPCInterface npc = getNpc(npcWrapper);
         Entity target = targetWrapper != null ? targetWrapper.getMCEntity() : null;
         return npc != null && ThrowManager.start(npc, target, animation, durationTicks,
-            struggleMode, difficulty, returnToCamera, onEscape, onFinish);
+            struggleMode, difficulty, returnToStart, onEscape, onFinish);
     }
 
     /** Numeric form: 0 none, 1 AD, 2 space, 3 shift. */
@@ -162,12 +162,12 @@ public final class ImmersiveBossAPI {
 
     public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
                                      String animation, int durationTicks, int struggleMode,
-                                     int difficulty, boolean returnToCamera,
+                                     int difficulty, boolean returnToStart,
                                      ThrowCallback onEscape, ThrowCallback onFinish) {
         EntityNPCInterface npc = getNpc(npcWrapper);
         Entity target = targetWrapper != null ? targetWrapper.getMCEntity() : null;
         return npc != null && ThrowManager.start(npc, target, animation, durationTicks,
-            struggleMode, difficulty, returnToCamera, onEscape, onFinish);
+            struggleMode, difficulty, returnToStart, onEscape, onFinish);
     }
 
     /** Stops the active throw for a target player and restores its state. */

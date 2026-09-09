@@ -121,7 +121,7 @@ README 的 [ImmersiveBossAPI 章节](https://github.com/Sweda666/CNPC-ImmersiveB
 
 ## 投技动画
 
-投技由服务器控制玩家位置和状态，适合放在 `attack(e)`、`damaged(e)` 或自定义计时器脚本中。Nashorn 只支持 ES5 语法，请使用 `var` 和普通 `function`。
+投技由服务器控制玩家位置和状态，适合放在 `attack(e)`、`damaged(e)` 或自定义计时器脚本中。Nashorn 只支持 ES5 语法，请使用 `var` 和普通 `function`。调用必须在服务端脚本执行；客户端脚本调用会返回 `false`。
 
 ```javascript
 var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
@@ -140,7 +140,7 @@ function attack(e) {
 }
 ```
 
-完整签名：
+完整字符串签名：
 
 ```text
 startThrow(npc, target, animation, durationTicks,
@@ -150,7 +150,16 @@ startThrow(npc, target, animation, durationTicks,
 
 `animation` 是 NPC GeckoLib 动画名，`durationTicks` 使用 tick（20 tick = 1 秒）。`returnToStart` 为 `true` 时，投技结束或挣脱后恢复玩家开始位置；为 `false` 时保留服务器记录的结束位置。旧的重载省略该参数时默认为 `false`。
 
-`struggleMode` 支持 `none`（不可挣脱）、`ad`（A/D）、`space` 和 `shift`，`difficulty` 必须为正整数，数值越大通常需要更多次输入。`onEscape` 和 `onFinish` 的参数都是 `(npc, player)`；取消、死亡、退出游戏或换维度不会触发这两个回调。
+`struggleMode` 支持 `none`（不可挣脱）、`ad`（A/D）、`space` 和 `shift`，`difficulty` 必须为正整数，数值越大通常需要更多次输入。也可以使用数字模式：`0` = `none`、`1` = `ad`、`2` = `space`、`3` = `shift`。数字模式示例：
+
+```javascript
+// 1 = A/D, difficulty 5, 结束时回到抓取前的位置
+BossAPI.startThrow(e.npc, target, "grab", 60, 1, 5, true,
+    function(npc, player) { npc.say("挣脱了"); },
+    function(npc, player) { npc.say("投技结束"); });
+```
+
+`onEscape` 和 `onFinish` 的参数都是 `(npc, player)`，并且在服务器恢复玩家状态之后执行。取消、替换、NPC 或玩家死亡、退出游戏和换维度不会触发这两个回调。一个 NPC 同时只能控制一个投技目标；目标必须是 CNPC 的 `IEntity` 玩家包装器，不能传 UUID 或实体 ID。
 
 投技控制方法：
 
@@ -160,3 +169,5 @@ BossAPI.isThrowActive(target); // 查询玩家是否被投技控制
 ```
 
 如果脚本直接从 NPC 包装器调用，也可以使用 `e.npc.startThrow(target, "grab", 60, ...)`、`e.npc.stopThrow(target)` 和 `e.npc.isThrowActive(target)`。目标应传入 `IEntity` 玩家包装器，而不是 UUID 或实体 ID。
+
+投技动画模型建议包含 `victim_root` 及其玩家身体骨骼；`camera_root` 用于第一人称视角，`camera_second_person` 和 `camera_third_person` 分别用于前、后方第三人称视角。缺少后两个骨骼时，客户端会从 `camera_root` 推导视角。
