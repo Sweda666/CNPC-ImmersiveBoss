@@ -270,6 +270,40 @@ public abstract class MixinNPCWrapper implements IHitboxDamageNpc, INpcTurnContr
             durationTicks, struggleMode, difficulty, returnToStart);
     }
 
+    /** Nashorn passes arithmetic expressions such as {@code 4.5 * 20} as doubles. */
+    @Override
+    public boolean startThrow(noppes.npcs.api.entity.IEntity target, String animation,
+                              double durationTicks, boolean returnToStart, int struggleMode,
+                              int difficulty) {
+        if (!Double.isFinite(durationTicks) || durationTicks <= 0.0
+            || durationTicks > Integer.MAX_VALUE) return false;
+        return startThrow(target, animation, (int) Math.round(durationTicks),
+            returnToStart, struggleMode, difficulty);
+    }
+
+    @Override
+    public boolean startThrow(noppes.npcs.api.entity.IEntity target, String animation,
+                              Double durationTicks, Boolean returnToStart, Integer struggleMode,
+                              Integer difficulty,
+                              sweda.cnpc_immersiveboss.api.ThrowCallback onEscape,
+                              sweda.cnpc_immersiveboss.api.ThrowCallback onFinish) {
+        if (durationTicks == null || returnToStart == null || struggleMode == null
+            || !Double.isFinite(durationTicks) || durationTicks <= 0.0
+            || durationTicks > Integer.MAX_VALUE) return false;
+        return ImmersiveBossAPI.startThrow(cnpc_immersiveboss$self(), target, animation,
+            (int) Math.round(durationTicks), struggleMode, difficulty, returnToStart,
+            onEscape, onFinish);
+    }
+
+    @Override
+    public boolean startThrow(noppes.npcs.api.entity.IEntity target, String animation,
+                              int durationTicks, int struggleMode, int difficulty,
+                              sweda.cnpc_immersiveboss.api.ThrowCallback onEscape,
+                              sweda.cnpc_immersiveboss.api.ThrowCallback onFinish) {
+        return ImmersiveBossAPI.startThrow(cnpc_immersiveboss$self(), target, animation,
+            durationTicks, struggleMode, difficulty, onEscape, onFinish);
+    }
+
     @Override
     public boolean stopThrow(noppes.npcs.api.entity.IEntity target) {
         return ImmersiveBossAPI.stopThrow(target);

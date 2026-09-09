@@ -17,8 +17,10 @@ import sweda.cnpc_immersiveboss.client.DebugOBBRenderer;
 import sweda.cnpc_immersiveboss.client.ThrowClientEvents;
 import sweda.cnpc_immersiveboss.client.renderer.RenderHandler;
 import sweda.cnpc_immersiveboss.config.ClientConfig;
+import sweda.cnpc_immersiveboss.config.GameplayConfig;
 import sweda.cnpc_immersiveboss.event.EntityCollisionListener;
 import sweda.cnpc_immersiveboss.event.HitboxDamageListener;
+import sweda.cnpc_immersiveboss.event.ThrowAttackListener;
 import sweda.cnpc_immersiveboss.event.NpcUpdateListener;
 import sweda.cnpc_immersiveboss.event.ProjectileOBBListener;
 import sweda.cnpc_immersiveboss.network.NetworkHandler;
@@ -38,6 +40,7 @@ public class Cnpc_immersiveboss {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, GameplayConfig.SPEC);
 
         // Register the Deferred Register to the mod event bus so tabs get registered
         // No need to register blocks or items anymore
@@ -70,6 +73,7 @@ public class Cnpc_immersiveboss {
         MinecraftForge.EVENT_BUS.register(EntityCollisionListener.class);
         // Register hitbox damage tracking — fires HitboxDamagedEvent on LivingHurtEvent
         MinecraftForge.EVENT_BUS.register(HitboxDamageListener.class);
+        MinecraftForge.EVENT_BUS.register(ThrowAttackListener.class);
         MinecraftForge.EVENT_BUS.register(ThrowManager.class);
     }
 

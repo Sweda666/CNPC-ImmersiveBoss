@@ -1,5 +1,7 @@
 ## CNPC-ImmersiveBoss
 
+- [Throw scripting](Throw-Scripting)
+
 - [Wiki 首页](Home)
 - [安装与快速开始](Installation-and-Quick-Start)
 - [碰撞箱建模](Hitbox-Modeling)

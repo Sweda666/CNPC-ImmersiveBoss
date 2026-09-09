@@ -39,6 +39,13 @@ public final class ThrowClientEvents {
     }
 
     @SubscribeEvent
+    public static void onLogin(ClientPlayerNetworkEvent.LoggingIn event) {
+        // Reset client input/camera locks when reconnecting after an abrupt
+        // window close, where the previous LoggingOut event may not fire.
+        ThrowClientState.clear();
+    }
+
+    @SubscribeEvent
     public static void onMovement(MovementInputUpdateEvent event) {
         if (!ThrowClientState.isActiveForTarget(event.getEntity().getId())) return;
         var input = event.getInput();

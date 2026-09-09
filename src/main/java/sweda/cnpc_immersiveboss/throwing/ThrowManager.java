@@ -175,6 +175,20 @@ public final class ThrowManager {
         stop(event.getEntity());
     }
 
+    /**
+     * A client can be closed without sending the normal throw stop packet. If
+     * the server kept the player entity alive while the connection was torn
+     * down, clear any stale movement lock before allowing a new session.
+     */
+    @SubscribeEvent
+    public static void onLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            stop(player);
+            player.setNoGravity(false);
+            player.fallDistance = 0;
+        }
+    }
+
     /** Stop immediately when lethal damage starts the player's death sequence. */
     @SubscribeEvent
     public static void onLivingDeath(LivingDeathEvent event) {

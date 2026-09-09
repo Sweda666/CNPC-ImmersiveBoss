@@ -1,5 +1,49 @@
 # CNPC-ImmersiveBoss
 
+## Throw scripting quick reference
+
+Throw animations are server-authoritative. The target must be a player
+`IEntity` wrapper and the animation must exist in the NPC GeckoLib model.
+Durations use ticks (`20` ticks = one second):
+
+```javascript
+function meleeAttack(a) {
+    var hitboxes = ["hdb_body", "hdb_head"];
+    for (var i in hitboxes) {
+        a.npc.activateHitboxDamage(hitboxes[i], 0, 40, 1.0, 1, 10, 0,
+            function(source, target) {
+                source.cancelAllHitboxDamageWindows();
+                source.startThrow(target, "attack_grab", 90, true, "ad", 5);
+            });
+    }
+}
+```
+
+The static API accepts escape and finish callbacks:
+
+```javascript
+var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
+BossAPI.startThrow(npc, target, "attack_grab", 90, true, "ad", 5,
+    function(npc, player) { /* escaped */ },
+    function(npc, player) { /* finished */ });
+```
+
+Use `none`, `ad`, `space`, or `shift` for struggle modes. Numeric modes
+`0`–`3` are supported by the static API. Direct wrapper calls with two null
+callbacks should use a string mode to avoid Nashorn overload ambiguity.
+`stopThrow(target)` cancels and restores the player.
+
+Players are prevented from attacking while controlled by a throw by default.
+Change `config/cnpc_immersiveboss-common.toml` to allow attacks:
+
+```toml
+[throw]
+disableTargetAttack = false
+```
+
+See [Scripting API](docs/wiki/Scripting-API.md) for all hitbox-window and
+throw signatures.
+
 ## 0.5.8 更新 / Update
 
 Version 0.5.8 adds server-authoritative throw animations and completes the

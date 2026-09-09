@@ -8,10 +8,10 @@ public enum StruggleMode {
     public static StruggleMode parse(String value) {
         if (value == null || value.isBlank()) return NONE;
         return switch (value.trim().toLowerCase(Locale.ROOT)) {
-            case "none" -> NONE;
-            case "ad" -> AD;
-            case "space" -> SPACE;
-            case "shift" -> SHIFT;
+            case "none", "0" -> NONE;
+            case "ad", "1" -> AD;
+            case "space", "2" -> SPACE;
+            case "shift", "3" -> SHIFT;
             default -> throw new IllegalArgumentException("Unknown struggle mode: " + value);
         };
     }

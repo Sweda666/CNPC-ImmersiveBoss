@@ -250,12 +250,16 @@
         {
             name: 'victim_right_item',
             parent: 'victim_right_arm',
-            origin: [5, 12, 0]
+            // The vanilla right hand is centered at x=6 (the arm pivot is x=5).
+            // Item attachments must use the palm center so third-person item
+            // transforms line up with the player's actual held item.
+            origin: [6, 12, 0]
         },
         {
             name: 'victim_left_item',
             parent: 'victim_left_arm',
-            origin: [-5, 12, 0]
+            // Mirror of the right-hand palm center.
+            origin: [-6, 12, 0]
         }
     ];
 

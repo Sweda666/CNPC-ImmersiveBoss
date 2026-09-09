@@ -12,6 +12,12 @@ public interface IThrowNpc {
                        boolean returnToStart);
     boolean startThrow(IEntity target, String animation, int durationTicks, boolean returnToStart,
                        int struggleMode, int difficulty);
+    /** Nashorn arithmetic expressions are represented as doubles. */
+    boolean startThrow(IEntity target, String animation, double durationTicks, boolean returnToStart,
+                       int struggleMode, int difficulty);
+    boolean startThrow(IEntity target, String animation, Double durationTicks, Boolean returnToStart,
+                       Integer struggleMode, Integer difficulty, ThrowCallback onEscape,
+                       ThrowCallback onFinish);
     boolean startThrow(IEntity target, String animation, int durationTicks, int struggleMode,
                        int difficulty, ThrowCallback onEscape);
     boolean startThrow(IEntity target, String animation, int durationTicks, int struggleMode,

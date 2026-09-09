@@ -294,10 +294,15 @@ public final class ThrowClientState {
         // Keep the grip adjustment local to the item group so its parent arm
         // and all animated position/rotation/scale remain intact.
         poseStack.scale(0.7F, 0.7F, 0.7F);
+        // Keep the vanilla X transform for the grip orientation. The item
+        // model's long axis is then flipped through Y so it points toward
+        // the hand instead of toward the shoulder.
         poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F));
         poseStack.mulPose(Axis.YP.rotationDegrees(180.0F));
         boolean left = arm == HumanoidArm.LEFT;
-        poseStack.translate((left ? -1.0F : 1.0F) / 16.0F, 0.125F, -0.625F);
+        // Keep the item close to the palm; the larger vanilla-style Z offset
+        // leaves it visibly detached from this embedded hand bone.
+        poseStack.translate((left ? -1.0F : 1.0F) / 16.0F, 0.0625F, -0.125F);
         minecraft.getItemRenderer().renderStatic(player, stack,
             right ? ItemDisplayContext.THIRD_PERSON_RIGHT_HAND
                   : ItemDisplayContext.THIRD_PERSON_LEFT_HAND,
