@@ -41,6 +41,11 @@ libs/cnpc_morerendersuppot.jar
 # Local workflow instruction file (not for distribution)
 AGENTS.md
 
+# Local notes, crash/replay output, and distribution description drafts
+TODO.md
+replay_pid*.log
+CURSEFORGE_DESCRIPTION.md
+
 # Stray decompiled scratch file from CustomNPCs (analysis only, not project code)
 noppes/
 
