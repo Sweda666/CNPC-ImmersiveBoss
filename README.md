@@ -6,28 +6,6 @@ CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模
 
 > 完整分主题教程见 [Wiki](docs/wiki/Home.md)：[安装与快速开始](docs/wiki/Installation-and-Quick-Start.md) · [碰撞箱建模](docs/wiki/Hitbox-Modeling.md) · [战斗与交互](docs/wiki/Combat-and-Interaction.md) · [自定义 Boss 血条](docs/wiki/Custom-Boss-Bar.md) · [脚本 API（含投技）](docs/wiki/Scripting-API.md) · [常见问题](docs/wiki/Troubleshooting.md)
 
-## 0.3.11 更新 / Update
-
-### 中文
-
-0.3.11 在 0.3.10 的 OBB、Boss 血条和脚本 API 基础上，进一步扩展战斗兼容性与受击反馈：
-
-- 新增 Better Combat 兼容：攻击范围、角度和形状可直接检测 NPC 动画 OBB；客户端补充 OBB 目标，服务端重新验证攻击结果，并保留命中骨骼名称。
-- 新增 Iron’s Spellbooks 兼容：支持法术投射物、锥形法术、范围法术、链式闪电等攻击路径的 OBB 检测；移动投射物支持扫掠检测，并将命中部位传递到 `damaged(e).hitboxName`。
-- 伤害、暴击和伤害指示粒子可定位到实际命中的 OBB；可通过客户端配置 `damageParticlesFollowHitbox` 关闭。
-- Better Combat 和 Iron’s Spellbooks 等兼容模块按需加载；未安装相关模组时，本模组仍可独立运行，并增加了条件 Mixin 与 CNPC 事件回退以提升兼容性。
-- 附带 Blockbench 碰撞箱预览插件，可按碰撞箱属性显示彩色 OBB 边框，并支持隐藏碰撞箱和局部坐标轴预览。
-
-### English
-
-Version 0.3.11 builds on the OBB, custom boss bar, and scripting APIs from 0.3.10 with expanded combat compatibility and hit feedback:
-
-- Added Better Combat compatibility: attack ranges, angles, and shapes can directly test animated NPC OBBs. OBB targets are added on the client, validated on the server, and the hitbox name is preserved.
-- Added Iron’s Spellbooks compatibility: spell projectiles, cone and area spells, chain lightning, and other native attack paths can use OBB detection. Moving projectiles use swept detection, with the hitbox exposed through `damaged(e).hitboxName`.
-- Damage, critical-hit, and damage-indicator particles can appear at the actual hit OBB. This can be disabled with the client option `damageParticlesFollowHitbox`.
-- Better Combat and Iron’s Spellbooks integrations are loaded only when available. The mod remains standalone without them, with conditional Mixins and CNPC event fallbacks for better compatibility.
-- Added a Blockbench hitbox preview plugin with color-coded OBB outlines, hitbox visibility controls, and local-axis previews.
-
 ## 文档导航
 
 | 目标 | 阅读位置 |
