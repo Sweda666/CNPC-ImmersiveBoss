@@ -19,6 +19,7 @@ import sweda.cnpc_immersiveboss.api.IMixinNpcDamagedEvent;
 import sweda.cnpc_immersiveboss.api.IHitboxDamageContext;
 import sweda.cnpc_immersiveboss.api.INpcTurnState;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.compat.epicfight.EpicFightCompat;
 import sweda.cnpc_immersiveboss.entity.NpcTurnSpeedManager;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.OBB;
@@ -245,6 +246,13 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder, INpcTurnSta
         EntityNPCInterface self = (EntityNPCInterface) (Object) this;
 
         cnpc_multihitbox$activeDamageContext = null;
+        Entity attacker = source.getEntity();
+        String epicFightHitbox = EpicFightCompat.consumeHitbox(attacker, self);
+        if (epicFightHitbox != null) {
+            cnpc_multihitbox$lastHitboxName = epicFightHitbox;
+            return;
+        }
+
         Entity directEntity = source.getDirectEntity();
         if (directEntity instanceof IHitboxDamageContext context) {
             String contextHitbox = context.cnpc_immersiveboss$getActiveHitboxName();
@@ -264,7 +272,6 @@ public abstract class MixinEntityNPCInterface implements IOBBHolder, INpcTurnSta
         // Melee / direct attack: raycast attacker's look ray against attackable OBBs.
         // Only bones with b suffix (physical) or d flag (detectable) are attackable.
         // Sensor-only bones (hs_/has_ — no d, no b) are skipped.
-        Entity attacker = source.getEntity();
         if (!(attacker instanceof LivingEntity livingAttacker)) return;
 
         Vec3 eyePos = livingAttacker.getEyePosition(1.0f);

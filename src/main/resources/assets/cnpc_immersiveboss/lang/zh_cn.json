@@ -1,4 +1,7 @@
 {
+  "cnpc_immersiveboss.struggle.ad": "挣扎：%s / %s（%s/%s）",
+  "cnpc_immersiveboss.struggle.space": "挣扎：%s（%s/%s）",
+  "cnpc_immersiveboss.struggle.shift": "挣扎：%s（%s/%s）",
   "cnpc_immersiveboss.gui.title": "自定义 BossBar 设置",
   "cnpc_immersiveboss.gui.texture_path": "纹理路径",
   "cnpc_immersiveboss.gui.select": "选择",
@@ -19,5 +22,6 @@
   "cnpc_immersiveboss.bossbar.mode_customize_attacking": "战斗时显示自定义血条",
   "cnpc_immersiveboss.rotation.enabled": "启用旋转限制",
   "cnpc_immersiveboss.rotation.speed": "旋转速度（度/tick）",
-  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "最低导航速度比例"
+  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "最低导航速度比例",
+  "cnpc_immersiveboss.push_resistance": "推动"
 }

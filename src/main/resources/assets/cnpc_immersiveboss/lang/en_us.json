@@ -1,4 +1,7 @@
 {
+  "cnpc_immersiveboss.struggle.ad": "Struggle: %s / %s (%s/%s)",
+  "cnpc_immersiveboss.struggle.space": "Struggle: %s (%s/%s)",
+  "cnpc_immersiveboss.struggle.shift": "Struggle: %s (%s/%s)",
   "cnpc_immersiveboss.gui.title": "Custom BossBar Settings",
   "cnpc_immersiveboss.gui.texture_path": "Texture Path",
   "cnpc_immersiveboss.gui.select": "Select",
@@ -19,5 +22,6 @@
   "cnpc_immersiveboss.bossbar.mode_customize_attacking": "Show Custom (Attacking)",
   "cnpc_immersiveboss.rotation.enabled": "Limit Rotation",
   "cnpc_immersiveboss.rotation.speed": "Turn Speed (deg/t)",
-  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "Minimum Nav Speed"
+  "cnpc_immersiveboss.rotation.minimum_navigation_speed": "Minimum Nav Speed",
+  "cnpc_immersiveboss.push_resistance": "Push"
 }

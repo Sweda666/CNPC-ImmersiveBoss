@@ -14,6 +14,7 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
 import sweda.cnpc_immersiveboss.client.OBBRenderCapture;
+import sweda.cnpc_immersiveboss.client.ThrowClientState;
 import sweda.cnpc_immersiveboss.hitbox.ClientHitboxData;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxParser;
@@ -36,6 +37,8 @@ public abstract class MixinRenderCustomModel {
             com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer,
             float yaw, float partialTick, int packedLight, CallbackInfo ci) {
         OBBRenderCapture.discard();
+        ThrowClientState.beginModelRender(animatable,
+            new org.joml.Matrix4f(poseStack.last().pose()));
 
         if (animatable.modelResLoc == null) return;
 
@@ -50,11 +53,6 @@ public abstract class MixinRenderCustomModel {
                     npcId, animatable.modelResLoc.toString(), hitboxDefs));
             }
         }
-        if (hitboxDefs.isEmpty()) {
-            cnpc_multihitbox$clearObbs(animatable);
-            return;
-        }
-
         GeoModel<EntityCustomModel> model = ((RenderCustomModel) (Object) this).getGeoModel();
         if (model == null) return;
         BakedGeoModel bakedModel;
@@ -66,6 +64,18 @@ public abstract class MixinRenderCustomModel {
             return;
         }
         if (bakedModel == null) return;
+
+        boolean throwActive = animatable.owner != null
+            && ThrowClientState.isActiveForNpc(animatable.owner.getId());
+        bakedModel.getBone("victim_root").ifPresent(root -> {
+            root.setHidden(!throwActive);
+            root.setChildrenHidden(!throwActive);
+        });
+
+        if (hitboxDefs.isEmpty()) {
+            cnpc_multihitbox$clearObbs(animatable);
+            return;
+        }
 
         for (GeoHitboxDef def : hitboxDefs) {
             Optional<GeoBone> bone = bakedModel.getBone(def.geoBoneName);
@@ -84,6 +94,8 @@ public abstract class MixinRenderCustomModel {
             net.minecraft.client.renderer.RenderType renderType,
             com.mojang.blaze3d.vertex.VertexConsumer vertexConsumer,
             float yaw, float partialTick, int packedLight, CallbackInfo ci) {
+
+        ThrowClientState.endModelRender(animatable);
 
         if (animatable.owner == null || animatable.modelResLoc == null) return;
 

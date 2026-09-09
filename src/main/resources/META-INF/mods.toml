@@ -69,3 +69,10 @@ mandatory = true
 versionRange = "[1.20.1-1.0.0,1.20.1-1.3)"
 ordering = "NONE"
 side = "BOTH"
+# Optional Epic Fight integration for attack colliders and camera targeting.
+[[dependencies."${mod_id}"]]
+modId = "epicfight"
+mandatory = false
+versionRange = "[20.14.17,21)"
+ordering = "AFTER"
+side = "BOTH"

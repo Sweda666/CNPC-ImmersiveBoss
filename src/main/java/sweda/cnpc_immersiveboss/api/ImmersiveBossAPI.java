@@ -4,12 +4,14 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import noppes.npcs.api.NpcAPI;
 import noppes.npcs.api.entity.ICustomNpc;
+import noppes.npcs.api.entity.IEntity;
 import noppes.npcs.constants.EnumScriptType;
 import noppes.npcs.entity.EntityNPCInterface;
 import sweda.cnpc_immersiveboss.entity.NpcTurnSpeedManager;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
 import sweda.cnpc_immersiveboss.hitbox.ServerHitboxData;
+import sweda.cnpc_immersiveboss.throwing.ThrowManager;
 
 import java.util.List;
 import java.util.Map;
@@ -56,6 +58,117 @@ public final class ImmersiveBossAPI {
     public static final int DEFAULT_HITBOX_DAMAGE_MAX_TARGETS = 0;
 
     private ImmersiveBossAPI() {}
+
+    /**
+     * Starts a scripted throw animation against a player. The animation must
+     * be present in the NPC's GeckoLib model; a {@code victim_root} hierarchy
+     * created by the Blockbench tool is rendered with the target player's skin.
+     * During the animation, {@code camera_root} drives first-person view;
+     * {@code camera_second_person} and {@code camera_third_person} drive the
+     * front and back third-person views. Missing external views are derived
+     * from the first-person camera at runtime.
+     *
+     * @param npcWrapper attacking NPC wrapper
+     * @param targetWrapper player entity wrapper to throw
+     * @param animation GeckoLib animation name
+     * @param durationTicks animation duration in ticks
+     * @return true when the throw was accepted on the server
+     */
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, null);
+    }
+
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, String struggleMode) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, struggleMode, null);
+    }
+
+    /** Full script form with return-to-start toggle before struggle settings. */
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, boolean returnToStart,
+                                     String struggleMode, Integer difficulty,
+                                     ThrowCallback onEscape, ThrowCallback onFinish) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, struggleMode,
+            difficulty, returnToStart, onEscape, onFinish);
+    }
+
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, String struggleMode,
+                                     Integer difficulty) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks,
+            struggleMode, difficulty, null, null);
+    }
+
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, String struggleMode,
+                                     Integer difficulty, ThrowCallback onEscape) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks,
+            struggleMode, difficulty, onEscape, null);
+    }
+
+    /**
+     * Optional mode: null/empty/none (disabled), ad, space, or shift.
+     * Difficulty defaults to 5 when null; it must otherwise be positive.
+     * An AD cycle is A then D or D then A; single-key modes count fresh presses.
+     * Callbacks receive (npc, player), after state restoration, at most once.
+     * Only successful escape calls onEscape; only expiration calls onFinish.
+     * Cancellation, replacement, death, disconnect and dimension changes call neither.
+     */
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, String struggleMode,
+                                     Integer difficulty, ThrowCallback onEscape, ThrowCallback onFinish) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, struggleMode,
+            difficulty, false, onEscape, onFinish);
+    }
+
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, String struggleMode,
+                                     Integer difficulty, boolean returnToCamera,
+                                     ThrowCallback onEscape, ThrowCallback onFinish) {
+        EntityNPCInterface npc = getNpc(npcWrapper);
+        Entity target = targetWrapper != null ? targetWrapper.getMCEntity() : null;
+        return npc != null && ThrowManager.start(npc, target, animation, durationTicks,
+            struggleMode, difficulty, returnToCamera, onEscape, onFinish);
+    }
+
+    /** Numeric form: 0 none, 1 AD, 2 space, 3 shift. */
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, int struggleMode,
+                                     int difficulty) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks,
+            struggleMode, difficulty, null, null);
+    }
+
+    /** Numeric form with callbacks: 0 none, 1 AD, 2 space, 3 shift. */
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, int struggleMode,
+                                     int difficulty, ThrowCallback onEscape, ThrowCallback onFinish) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, struggleMode,
+            difficulty, false, onEscape, onFinish);
+    }
+
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, int struggleMode,
+                                     int difficulty, boolean returnToCamera,
+                                     ThrowCallback onEscape, ThrowCallback onFinish) {
+        EntityNPCInterface npc = getNpc(npcWrapper);
+        Entity target = targetWrapper != null ? targetWrapper.getMCEntity() : null;
+        return npc != null && ThrowManager.start(npc, target, animation, durationTicks,
+            struggleMode, difficulty, returnToCamera, onEscape, onFinish);
+    }
+
+    /** Stops the active throw for a target player and restores its state. */
+    public static boolean stopThrow(IEntity targetWrapper) {
+        Entity target = targetWrapper != null ? targetWrapper.getMCEntity() : null;
+        return ThrowManager.stop(target);
+    }
+
+    /** Returns whether the target player is currently controlled by a throw. */
+    public static boolean isThrowActive(IEntity targetWrapper) {
+        Entity target = targetWrapper != null ? targetWrapper.getMCEntity() : null;
+        return ThrowManager.isActive(target);
+    }
 
     /**
      * Applies damage to an NPC and records which hitbox was struck.

@@ -118,3 +118,21 @@ function init(e) {
 README 的 [ImmersiveBossAPI 章节](https://github.com/Sweda666/CNPC-ImmersiveBoss/blob/ce-addon/README.md#immersivebossapi)列出了全部重载、计数与清理规则。
 
 [上一页：自定义 Boss 血条](Custom-Boss-Bar) · [下一页：常见问题](Troubleshooting)
+# Throw animation
+
+Start a GeckoLib throw from a CNPC script with the static API:
+
+```javascript
+var API = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
+API.startThrow(npc, target, "grab", 60, true, "ad", 5,
+    function(attacker, victim) {}, function(attacker, victim) {});
+```
+
+The full overload is `startThrow(npc, target, animation, durationTicks,
+returnToStart, struggleMode, difficulty, onEscape, onFinish)`. Set
+`returnToStart` to `true` to restore the player's position captured when the
+throw started. Leave it `false` to keep the server-authoritative ending
+position. Existing overloads remain available and use `false`.
+
+`struggleMode` accepts `none`, `ad`, `space`, or `shift`; difficulty must be
+positive. Callbacks receive `(npc, player)` after state restoration.

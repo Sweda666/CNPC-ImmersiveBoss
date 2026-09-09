@@ -14,6 +14,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.network.NetworkRegistry;
 import org.slf4j.Logger;
 import sweda.cnpc_immersiveboss.client.DebugOBBRenderer;
+import sweda.cnpc_immersiveboss.client.ThrowClientEvents;
 import sweda.cnpc_immersiveboss.client.renderer.RenderHandler;
 import sweda.cnpc_immersiveboss.config.ClientConfig;
 import sweda.cnpc_immersiveboss.event.EntityCollisionListener;
@@ -21,6 +22,7 @@ import sweda.cnpc_immersiveboss.event.HitboxDamageListener;
 import sweda.cnpc_immersiveboss.event.NpcUpdateListener;
 import sweda.cnpc_immersiveboss.event.ProjectileOBBListener;
 import sweda.cnpc_immersiveboss.network.NetworkHandler;
+import sweda.cnpc_immersiveboss.throwing.ThrowManager;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(Cnpc_immersiveboss.MODID)
@@ -30,7 +32,7 @@ public class Cnpc_immersiveboss {
     public static final String MODID = "cnpc_immersiveboss";
     // Directly reference a slf4j logger
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
 
     public Cnpc_immersiveboss() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -68,6 +70,7 @@ public class Cnpc_immersiveboss {
         MinecraftForge.EVENT_BUS.register(EntityCollisionListener.class);
         // Register hitbox damage tracking — fires HitboxDamagedEvent on LivingHurtEvent
         MinecraftForge.EVENT_BUS.register(HitboxDamageListener.class);
+        MinecraftForge.EVENT_BUS.register(ThrowManager.class);
     }
 
     private void clientSetup(final FMLClientSetupEvent event) {
@@ -77,6 +80,7 @@ public class Cnpc_immersiveboss {
 
         // Register OBB debug wireframe renderer (shown with F3+B)
         MinecraftForge.EVENT_BUS.register(DebugOBBRenderer.class);
+        MinecraftForge.EVENT_BUS.register(ThrowClientEvents.class);
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent
@@ -103,4 +107,3 @@ public class Cnpc_immersiveboss {
         }
     }
 }
-

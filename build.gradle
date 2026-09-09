@@ -147,7 +147,7 @@ repositories {
     // If you have mod jar dependencies in ./libs, you can declare them as a repository like so.
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html#sub:flat_dir_resolver
     flatDir {
-        dirs 'libs', '待兼容模组'
+        dirs 'libs', '待兼容模组', "$buildDir/optional-mods"
     }
 }
 
@@ -157,6 +157,7 @@ dependencies {
     // their support mods; -PwithoutOptionalMods also skips TACZ and MoreRenderSuppot.
     def optionalModsEnabled = !project.hasProperty('withoutOptionalMods')
     def combatModsEnabled = optionalModsEnabled && !project.hasProperty('withoutCombatMods')
+    def betterCombatEnabled = combatModsEnabled && !project.hasProperty('withoutBetterCombat')
     // Specify the version of Minecraft to use.
     // Any artifact can be supplied so long as it has a "userdev" classifier artifact and is a compatible patcher artifact.
     // The "userdev" classifier will be requested and setup by ForgeGradle.
@@ -199,7 +200,7 @@ dependencies {
     }
     // Optional combat/magic integrations for the development runtime. These are
     // deliberately conditional so the project remains standalone when a jar is absent.
-    if (combatModsEnabled && file("libs/bettercombat-forge-1.9.0+1.20.1.jar").exists()) {
+    if (betterCombatEnabled && file("libs/bettercombat-forge-1.9.0+1.20.1.jar").exists()) {
         runtimeOnly fg.deobf("libs:bettercombat-forge-1.9.0+1.20.1:0")
     }
     if (combatModsEnabled && file("libs/cloth-config-11.1.118-forge.jar").exists()) {
@@ -219,6 +220,22 @@ dependencies {
     }
     if (combatModsEnabled && file("libs/irons_lib-1.20.1-2.1.0.jar").exists()) {
         runtimeOnly fg.deobf("libs:irons_lib-1.20.1-2.1.0:0")
+    }
+    // Epic Fight is a dev-runtime-only optional integration. Compatibility
+    // code uses @Pseudo mixins and reflection, so the production jar has no
+    // hard class linkage when Epic Fight is absent.
+    def epicFightJar = file("待兼容模组/[史诗战斗] epic-fight-20.14.17-mc1.20.1-forge.jar")
+    if (combatModsEnabled && epicFightJar.exists()) {
+        def normalizedEpicFightJar = file("$buildDir/optional-mods/epic-fight-20.14.17-mc1.20.1-forge.jar")
+        if (!normalizedEpicFightJar.exists()
+            || normalizedEpicFightJar.length() != epicFightJar.length()) {
+            copy {
+                from epicFightJar
+                into normalizedEpicFightJar.parentFile
+                rename { normalizedEpicFightJar.name }
+            }
+        }
+        runtimeOnly fg.deobf("optional:epic-fight-20.14.17-mc1.20.1-forge:0")
     }
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html

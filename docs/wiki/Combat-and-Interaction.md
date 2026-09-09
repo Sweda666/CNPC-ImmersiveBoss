@@ -43,3 +43,9 @@ function interact(e) {
 对剑、尾巴等动画骨骼，使用 `activateHitboxDamage` 在有效帧打开伤害窗口。该窗口通过 `mobAttack` 伤害源结算，会经过护甲、无敌帧和事件取消；窗口可以延迟启动、重复命中、限制目标数并在命中后回调。完整示例见[脚本 API](Scripting-API)。
 
 [上一页：碰撞箱建模](Hitbox-Modeling) · [下一页：自定义 Boss 血条](Custom-Boss-Bar)
+# Throw movement safety
+
+During a scripted throw the server owns the victim's position and updates it
+each tick. Client movement packets from the pre-throw position are ignored for
+that player until the throw ends, so vanilla cannot disconnect the player for
+illegal movement. Normal movement validation resumes immediately afterward.

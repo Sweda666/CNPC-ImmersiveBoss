@@ -6,6 +6,9 @@ import sweda.cnpc_immersiveboss.network.packet.SyncCustomBossBarPacket;
 import sweda.cnpc_immersiveboss.network.packet.SyncDamageParticlePacket;
 import sweda.cnpc_immersiveboss.network.packet.SyncHitboxPacket;
 import sweda.cnpc_immersiveboss.network.packet.SyncOBBPacket;
+import sweda.cnpc_immersiveboss.network.packet.SyncThrowPacket;
+import sweda.cnpc_immersiveboss.network.packet.StruggleInputPacket;
+import sweda.cnpc_immersiveboss.network.packet.SyncStruggleProgressPacket;
 
 public class NetworkHandler {
 
@@ -38,10 +41,37 @@ public class NetworkHandler {
                 .decoder(SyncDamageParticlePacket::decode)
                 .consumerMainThread(SyncDamageParticlePacket::handle)
                 .add();
+
+        INSTANCE.messageBuilder(SyncThrowPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncThrowPacket::encode)
+                .decoder(SyncThrowPacket::decode)
+                .consumerMainThread(SyncThrowPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(StruggleInputPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(StruggleInputPacket::encode)
+                .decoder(StruggleInputPacket::decode)
+                .consumerMainThread(StruggleInputPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(SyncStruggleProgressPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncStruggleProgressPacket::encode)
+                .decoder(SyncStruggleProgressPacket::decode)
+                .consumerMainThread(SyncStruggleProgressPacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(net.minecraft.server.level.ServerPlayer player, SyncCustomBossBarPacket packet) {
         INSTANCE.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+    }
+
+    public static void sendToPlayer(net.minecraft.server.level.ServerPlayer player, SyncThrowPacket packet) {
+        INSTANCE.sendTo(packet, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+    }
+
+    public static void sendToTrackingAndSelf(net.minecraft.world.entity.Entity entity,
+                                             SyncThrowPacket packet) {
+        INSTANCE.send(net.minecraftforge.network.PacketDistributor.TRACKING_ENTITY_AND_SELF.with(() -> entity), packet);
     }
 
     public static void sendToTrackingAndSelf(net.minecraft.world.entity.Entity entity,

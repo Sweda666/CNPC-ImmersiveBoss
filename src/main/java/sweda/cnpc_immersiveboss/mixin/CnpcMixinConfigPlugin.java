@@ -15,6 +15,8 @@ public final class CnpcMixinConfigPlugin implements IMixinConfigPlugin {
         "sweda.cnpc_immersiveboss.mixin.compat.MixinBetterCombat";
     private static final String IRONS_SPELLBOOKS_MIXIN_PREFIX =
         "sweda.cnpc_immersiveboss.mixin.compat.MixinIrons";
+    private static final String EPIC_FIGHT_MIXIN_PREFIX =
+        "sweda.cnpc_immersiveboss.mixin.compat.MixinEpicFight";
 
     @Override
     public void onLoad(String mixinPackage) {
@@ -35,6 +37,9 @@ public final class CnpcMixinConfigPlugin implements IMixinConfigPlugin {
         }
         if (mixinClassName.startsWith(IRONS_SPELLBOOKS_MIXIN_PREFIX)) {
             return isModLoaded("irons_spellbooks");
+        }
+        if (mixinClassName.startsWith(EPIC_FIGHT_MIXIN_PREFIX)) {
+            return isModLoaded("epicfight");
         }
         return true;
     }

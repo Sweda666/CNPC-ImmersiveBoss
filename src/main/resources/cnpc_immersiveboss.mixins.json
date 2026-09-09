@@ -12,11 +12,16 @@
     "MixinEntityNPCInterface",
     "MixinEventHooks",
     "MixinMoveControl",
+    "MixinResistances",
     "MixinNPCWrapper",
     "MixinNpcDamagedEvent",
     "MixinNpcInteractEvent",
     "MixinServerGamePacketListenerImpl",
     "compat.MixinBetterCombatServerNetwork",
+    "compat.MixinEpicFightAttackAnimation",
+    "compat.MixinEpicFightCollider",
+    "compat.MixinEpicFightColliderShape",
+    "compat.MixinEpicFightMultiCollider",
     "compat.MixinIronsAbstractMagicProjectile",
     "compat.MixinIronsAbstractConeProjectile",
     "compat.MixinIronsAoeEntity",
@@ -28,13 +33,18 @@
   "client": [
     "MixinGuiNpcDisplay",
     "MixinSubGuiNpcMovement",
+    "MixinSubGuiNpcResistanceProperties",
     "MixinRenderCustomModel",
     "MixinGeoEntityRenderer",
+    "MixinEntityRenderDispatcher",
     "MixinGameRenderer",
     "MixinParticleEngine",
     "MixinClientPacketListener",
+    "MixinCamera",
     "compat.MixinBetterCombatTargetFinder",
-    "GeoBoneAccessor"
+    "compat.MixinEpicFightCameraAPI",
+    "GeoBoneAccessor",
+    "CameraInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

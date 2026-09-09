@@ -1,6 +1,7 @@
 package sweda.cnpc_immersiveboss.event;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.util.Mth;
 import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -14,6 +15,7 @@ import noppes.npcs.entity.EntityNPCInterface;
 import org.slf4j.Logger;
 import sweda.cnpc_immersiveboss.api.HitboxCollideEvent;
 import sweda.cnpc_immersiveboss.api.IOBBHolder;
+import sweda.cnpc_immersiveboss.api.IPushResistance;
 import sweda.cnpc_immersiveboss.entity.NpcTurnSpeedManager;
 import sweda.cnpc_immersiveboss.hitbox.GeoHitboxDef;
 import sweda.cnpc_immersiveboss.hitbox.HitboxDamageManager;
@@ -183,11 +185,15 @@ public class EntityCollisionListener {
         dx /= maxDist;
         dz /= maxDist;
         double force = Math.min(1.0 / maxDist, 1.0) * 0.05;
+        double selfForce = force * (1.0 - getPushResistance(self));
+        double otherForce = force * (1.0 - getPushResistance(other));
 
         // Push other AWAY from OBB center
-        other.setDeltaMovement(other.getDeltaMovement().add(dx * force, 0, dz * force));
+        other.setDeltaMovement(other.getDeltaMovement().add(dx * otherForce, 0,
+            dz * otherForce));
         // Push self AWAY from other
-        self.setDeltaMovement(self.getDeltaMovement().add(-dx * force, 0, -dz * force));
+        self.setDeltaMovement(self.getDeltaMovement().add(-dx * selfForce, 0,
+            -dz * selfForce));
 
         // Sync velocity to client for players (required for setDeltaMovement to take effect)
         if (other instanceof ServerPlayer sp) {
@@ -196,5 +202,14 @@ public class EntityCollisionListener {
         if (self instanceof ServerPlayer sp) {
             sp.connection.send(new ClientboundSetEntityMotionPacket(sp));
         }
+    }
+
+    private static float getPushResistance(Entity entity) {
+        if (!(entity instanceof EntityNPCInterface npc)
+            || npc.stats == null
+            || !(npc.stats.resistances instanceof IPushResistance resistance)) {
+            return 0.0F;
+        }
+        return Mth.clamp(resistance.cnpc_immersiveboss$getPushResistance(), 0.0F, 1.0F);
     }
 }
