@@ -1,5 +1,21 @@
 # CNPC-ImmersiveBoss
 
+## Throw API (0.4.x)
+
+The throw API can optionally restore the player's starting position. The new
+boolean is placed before `struggleMode` and defaults to `false` in older
+overloads:
+
+```javascript
+ImmersiveBossAPI.startThrow(npc, target, "grab", 60,
+    true, "ad", 5, onEscape, onFinish);
+```
+
+`true` restores the player's position when the throw ends. `false` leaves the
+player at the throw's final server position. The server also suppresses stale
+client movement packets while a throw is active, preventing vanilla's illegal
+movement disconnect during scripted throws.
+
 CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模组。它为 GeckoLib NPC 模型提供可随骨骼动画旋转、移动的 OBB 多碰撞箱，并补充自定义 Boss 血条、分部位受伤、碰撞脚本事件和定时碰撞伤害 API。
 
 本文档对应当前源码版本 `0.5.8`。
