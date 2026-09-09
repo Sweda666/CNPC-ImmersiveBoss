@@ -20,7 +20,7 @@ CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模
 
 本文档对应当前源码版本 `0.3.11`。
 
-> 完整分主题教程见 [Wiki](docs/wiki/Home.md)：[安装与快速开始](docs/wiki/Installation-and-Quick-Start.md) · [碰撞箱建模](docs/wiki/Hitbox-Modeling.md) · [战斗与交互](docs/wiki/Combat-and-Interaction.md) · [自定义 Boss 血条](docs/wiki/Custom-Boss-Bar.md) · [脚本 API](docs/wiki/Scripting-API.md) · [常见问题](docs/wiki/Troubleshooting.md)
+> 完整分主题教程见 [Wiki](docs/wiki/Home.md)：[安装与快速开始](docs/wiki/Installation-and-Quick-Start.md) · [碰撞箱建模](docs/wiki/Hitbox-Modeling.md) · [战斗与交互](docs/wiki/Combat-and-Interaction.md) · [自定义 Boss 血条](docs/wiki/Custom-Boss-Bar.md) · [脚本 API（含投技）](docs/wiki/Scripting-API.md) · [常见问题](docs/wiki/Troubleshooting.md)
 
 ## 0.3.11 更新 / Update
 
@@ -825,6 +825,34 @@ Better Combat 和 Iron's Spellbooks 不是本模组的强制依赖。检测到�
 ```
 
 当前兼容代码按 Better Combat `1.9.0` 和 Iron's Spellbooks `1.20.1-3.16.2` 的开发环境进行适配；不同版本应在实际游戏中验证。
+
+## 投技脚本 / Throw scripts
+
+在 NPC 的 `init`、`tick` 或攻击脚本中调用静态 API。`target` 必须是玩家实体包装器，`animation` 是 NPC GeckoLib 动画名，时长单位为 tick（20 tick = 1 秒）：
+
+```javascript
+var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
+
+function attack(e) {
+    var target = e.npc.getAttackTarget();
+    if (target == null || BossAPI.isThrowActive(target)) return;
+
+    BossAPI.startThrow(e.npc, target, "grab", 60, true, "ad", 5,
+        function(npc, player) { npc.say("挣脱了"); },
+        function(npc, player) { npc.say("投技结束"); });
+}
+```
+
+完整签名为 `startThrow(npc, target, animation, durationTicks, returnToStart, struggleMode, difficulty, onEscape, onFinish)`。`returnToStart` 为 `true` 时在投技结束或挣脱后将玩家送回开始位置；为 `false` 时保留服务器记录的结束位置。`struggleMode` 可用 `none`、`ad`、`space`、`shift`，难度必须为正数。回调参数依次为 `(npc, player)`，仅在对应流程正常完成时执行。
+
+投技可随时取消或查询：
+
+```javascript
+BossAPI.stopThrow(target);       // 取消并恢复玩家状态
+BossAPI.isThrowActive(target);   // 是否仍在投技中
+```
+
+也可以直接从 `e.npc` 调用同名方法（见 [脚本 API](docs/wiki/Scripting-API.md)）。NPC 死亡、玩家退出或换维度会自动清理投技状态；这些情况不会触发完成或挣脱回调。
 
 ## 许可证
 

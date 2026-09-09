@@ -118,21 +118,45 @@ function init(e) {
 README 的 [ImmersiveBossAPI 章节](https://github.com/Sweda666/CNPC-ImmersiveBoss/blob/ce-addon/README.md#immersivebossapi)列出了全部重载、计数与清理规则。
 
 [上一页：自定义 Boss 血条](Custom-Boss-Bar) · [下一页：常见问题](Troubleshooting)
-# Throw animation
 
-Start a GeckoLib throw from a CNPC script with the static API:
+## 投技动画
+
+投技由服务器控制玩家位置和状态，适合放在 `attack(e)`、`damaged(e)` 或自定义计时器脚本中。Nashorn 只支持 ES5 语法，请使用 `var` 和普通 `function`。
 
 ```javascript
-var API = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
-API.startThrow(npc, target, "grab", 60, true, "ad", 5,
-    function(attacker, victim) {}, function(attacker, victim) {});
+var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
+
+function attack(e) {
+    var target = e.npc.getAttackTarget();
+    if (target == null || BossAPI.isThrowActive(target)) return;
+
+    BossAPI.startThrow(e.npc, target, "grab", 60, true, "ad", 5,
+        function(npc, player) {
+            npc.say("玩家挣脱了");
+        },
+        function(npc, player) {
+            npc.say("投技完成");
+        });
+}
 ```
 
-The full overload is `startThrow(npc, target, animation, durationTicks,
-returnToStart, struggleMode, difficulty, onEscape, onFinish)`. Set
-`returnToStart` to `true` to restore the player's position captured when the
-throw started. Leave it `false` to keep the server-authoritative ending
-position. Existing overloads remain available and use `false`.
+完整签名：
 
-`struggleMode` accepts `none`, `ad`, `space`, or `shift`; difficulty must be
-positive. Callbacks receive `(npc, player)` after state restoration.
+```text
+startThrow(npc, target, animation, durationTicks,
+           returnToStart, struggleMode, difficulty,
+           onEscape, onFinish)
+```
+
+`animation` 是 NPC GeckoLib 动画名，`durationTicks` 使用 tick（20 tick = 1 秒）。`returnToStart` 为 `true` 时，投技结束或挣脱后恢复玩家开始位置；为 `false` 时保留服务器记录的结束位置。旧的重载省略该参数时默认为 `false`。
+
+`struggleMode` 支持 `none`（不可挣脱）、`ad`（A/D）、`space` 和 `shift`，`difficulty` 必须为正整数，数值越大通常需要更多次输入。`onEscape` 和 `onFinish` 的参数都是 `(npc, player)`；取消、死亡、退出游戏或换维度不会触发这两个回调。
+
+投技控制方法：
+
+```javascript
+BossAPI.stopThrow(target);     // 取消当前投技并恢复玩家状态
+BossAPI.isThrowActive(target); // 查询玩家是否被投技控制
+```
+
+如果脚本直接从 NPC 包装器调用，也可以使用 `e.npc.startThrow(target, "grab", 60, ...)`、`e.npc.stopThrow(target)` 和 `e.npc.isThrowActive(target)`。目标应传入 `IEntity` 玩家包装器，而不是 UUID 或实体 ID。

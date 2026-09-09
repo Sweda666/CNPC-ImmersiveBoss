@@ -10,7 +10,7 @@ CNPC-ImmersiveBoss 为 CustomNPCs 与 CNPC Gecko Addon 的 GeckoLib NPC 提供�
 2. [碰撞箱建模](Hitbox-Modeling)：理解骨骼命名、Blockbench 坐标和多 cube 规则。
 3. [战斗与交互](Combat-and-Interaction)：了解攻击、弹射物、交互、传感器和推挤。
 4. [自定义 Boss 血条](Custom-Boss-Bar)：准备 PNG 素材并在 NPC GUI 中配置。
-5. [脚本 API](Scripting-API)：编写 `damaged`、`interact`、`collide` 与攻击窗口脚本。
+5. [脚本 API](Scripting-API)：编写 `damaged`、`interact`、`collide`、攻击窗口与投技脚本。
 6. [常见问题](Troubleshooting)：使用 `F3+B` 和日志定位问题。
 7. [开发者指南](Development)：构建、运行以及修改 mixin 时的注意事项。
 
@@ -23,6 +23,7 @@ CNPC-ImmersiveBoss 为 CustomNPCs 与 CNPC Gecko Addon 的 GeckoLib NPC 提供�
 | 物理箱与传感器 | 分离阻挡推挤和纯重叠检测 |
 | 弹射物兼容 | 支持箭、三叉戟等原版弹射物，以及可选 TaCZ 枪械兼容 |
 | 碰撞伤害窗口 | 让武器骨骼在指定动画帧造成伤害并执行回调 |
+| 投技动画 | 从 CNPC 脚本控制抓取、挣扎、回到起始位置和结束回调 |
 | 自定义血条 | 用上下分层 PNG 制作常显或战斗时显示的 Boss 血条 |
 | 调试渲染 | `F3+B` 查看 OBB 类型、名称、局部轴和重叠状态 |
 
