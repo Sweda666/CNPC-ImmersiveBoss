@@ -1,48 +1,8 @@
 # CNPC-ImmersiveBoss
 
-## Throw scripting quick reference
+CNPC-ImmersiveBoss is a Forge mod targeting **CustomNPCs** and **CNPC Gecko Addon**. It provides OBB (Oriented Bounding Box) multi-hitboxes for GeckoLib NPC models that rotate and move with bone animations, and supplements custom boss bars, per-hitbox damage, collision script events, and timed hitbox damage API.
 
-Throw animations are server-authoritative. The target must be a player
-`IEntity` wrapper and the animation must exist in the NPC GeckoLib model.
-Durations use ticks (`20` ticks = one second):
-
-```javascript
-function meleeAttack(a) {
-    var hitboxes = ["hdb_body", "hdb_head"];
-    for (var i in hitboxes) {
-        a.npc.activateHitboxDamage(hitboxes[i], 0, 40, 1.0, 1, 10, 0,
-            function(source, target) {
-                source.cancelAllHitboxDamageWindows();
-                source.startThrow(target, "attack_grab", 90, true, "ad", 5);
-            });
-    }
-}
-```
-
-The static API accepts escape and finish callbacks:
-
-```javascript
-var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
-BossAPI.startThrow(npc, target, "attack_grab", 90, true, "ad", 5,
-    function(npc, player) { /* escaped */ },
-    function(npc, player) { /* finished */ });
-```
-
-Use `none`, `ad`, `space`, or `shift` for struggle modes. Numeric modes
-`0`–`3` are supported by the static API. Direct wrapper calls with two null
-callbacks should use a string mode to avoid Nashorn overload ambiguity.
-`stopThrow(target)` cancels and restores the player.
-
-Players are prevented from attacking while controlled by a throw by default.
-Change `config/cnpc_immersiveboss-common.toml` to allow attacks:
-
-```toml
-[throw]
-disableTargetAttack = false
-```
-
-See [Scripting API](docs/wiki/Scripting-API.md) for all hitbox-window and
-throw signatures.
+CNPC-ImmersiveBoss 是一个面向 **CustomNPCs** 与 **CNPC Gecko Addon** 的 Forge 模组。它为 GeckoLib NPC 模型提供可随骨骼动画旋转、移动的 OBB（有向包围盒）多碰撞箱，并补充自定义 Boss 血条、分部位受伤、碰撞脚本事件和定时碰撞伤害 API。
 
 ## 0.5.8 更新 / Update
 
@@ -61,8 +21,6 @@ The server also suppresses stale client movement packets while a throw is
 active, preventing vanilla's illegal-movement disconnect during scripted
 throws. Numeric struggle modes are `0` (none), `1` (A/D), `2` (space), and `3`
 (shift).
-
-CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模组。它为 GeckoLib NPC 模型提供可随骨骼动画旋转、移动的 OBB 多碰撞箱，并补充自定义 Boss 血条、分部位受伤、碰撞脚本事件和定时碰撞伤害 API。
 
 本文档对应当前源码版本 `0.5.8`。
 
@@ -90,7 +48,7 @@ Version 0.5.8 builds on the OBB, custom boss bar, and scripting APIs with expand
 - Added a Blockbench hitbox preview plugin with color-coded OBB outlines, hitbox visibility controls, and local-axis previews.
 - Added scriptable throw animations with struggle modes, callbacks, optional return-to-start placement, and cleanup on death, disconnect, or dimension changes.
 
-## 文档导航
+## 文档导航 / Documentation Navigation
 
 | 目标 | 阅读位置 |
 | --- | --- |
@@ -101,7 +59,7 @@ Version 0.5.8 builds on the OBB, custom boss bar, and scripting APIs with expand
 | 配置自定义血条 | [自定义 Boss 血条](#自定义-boss-血条) |
 | 排查模型或脚本问题 | [F3+B 调试颜色](#f3b-调试颜色)、[常见问题](#常见问题) |
 
-## 主要功能
+## 主要功能 / Main Features
 
 - 从 GeckoLib `.geo.json` 模型骨骼中读取多个 OBB 碰撞箱。
 - 区分实体碰撞箱、传感器、可检测碰撞箱和可见碰撞箱。
@@ -117,7 +75,7 @@ Version 0.5.8 builds on the OBB, custom boss bar, and scripting APIs with expand
 - 使用 `F3+B` 按属性显示不同颜色的 OBB，并将正在重叠的 OBB 标红。
 - 使用一张上下分层的 PNG 制作自定义 Boss 血条，支持常显或仅战斗时显示。
 
-## 运行环境与安装
+## 运行环境与安装 / Runtime Environment & Installation
 
 当前项目使用以下环境开发和验证：
 
@@ -139,7 +97,7 @@ Version 0.5.8 builds on the OBB, custom boss bar, and scripting APIs with expand
 
 CNPC Gecko Addon 是本模组 OBB 渲染链路的必要依赖。仓库中的 `CNPC MoreRenderSuppot` 仅用于开发环境下的可选兼容测试，不是玩家安装本模组时的必要依赖。
 
-## 快速开始
+## 快速开始 / Quick Start
 
 1. 在 Blockbench 的 GeckoLib 模型中创建一个带 cube 的骨骼，例如 `hdb_body`。
 2. 通过 CNPC Gecko Addon 将该 `.geo.json` 模型设置给 NPC。
@@ -148,7 +106,7 @@ CNPC Gecko Addon 是本模组 OBB 渲染链路的必要依赖。仓库中的 `CN
 5. 攻击 NPC，在其 `damaged(e)` 脚本中读取 `e.hitboxName`。
 6. 如需攻击动画中的武器判定，调用 `ImmersiveBossAPI.activateHitboxDamage(...)` 临时激活对应碰撞箱。
 
-## 自定义 Boss 血条
+## 自定义 Boss 血条 / Custom Boss Bar
 
 ### 显示模式
 
@@ -244,7 +202,7 @@ mypack:textures/gui/bossbar.png
 
 `X偏移` 适合素材左右带固定端帽的情况。普通矩形填充层保持 `0` 即可。
 
-## OBB 碰撞箱
+## OBB 碰撞箱 / OBB Hitboxes
 
 ### 命名规则
 
@@ -335,7 +293,7 @@ hadb_tail__2
 
 脚本中的普通受击名称和定时伤害激活会归一化为基础骨骼名 `hadb_tail`。因此通常只需要在脚本里判断或传入基础名称，不要依赖 `__1`、`__2`。
 
-## 攻击、交互与碰撞行为
+## 攻击、交互与碰撞行为 / Combat, Interaction & Collision
 
 ### 玩家攻击和交互
 
@@ -361,7 +319,7 @@ hadb_tail__2
 - 只有本次相交的双方碰撞箱都为 `b` 型时，双方才会被互相推开。
 - 无物理效果的实体、同一载具上的乘客等会被过滤。
 
-## F3+B 调试颜色
+## F3+B 调试颜色 / F3+B Debug Colors
 
 按下 `F3+B` 后，本模组会在原版碰撞箱之外绘制 NPC 的 OBB 线框：
 
@@ -386,7 +344,7 @@ showObbNames = true
 
 将其改为 `false` 后，`F3+B` 只绘制 OBB 线框和局部轴，不再绘制名称。
 
-## CustomNPCs 脚本事件
+## CustomNPCs 脚本事件 / CustomNPCs Script Events
 
 CustomNPCs 1.20.1 使用 Nashorn JavaScript，脚本按 ES5 编写。请使用 `var` 和普通 `function`，不要使用 `let`、`const`、箭头函数、可选链等新语法。
 
@@ -771,7 +729,94 @@ e.npc.setRotationImmediate(90); // 忽略限制，立即转到 90 度
 
 同一功能也可以通过静态 API 调用，例如 `ImmersiveBossAPI.setTurnSpeedLimit(e.npc, 3.0)`。
 
-## 数据同步与服务端说明
+## Throw scripting quick reference / 投技脚本快速参考
+
+Throw animations are server-authoritative. The `target` must be a player `IEntity` wrapper and the `animation` must exist in the NPC GeckoLib model. Durations use ticks (`20` ticks = 1 second).
+投技动画由服务器权威控制。`target` 必须是玩家实体包装器（`IEntity`），`animation` 必须是 NPC GeckoLib 模型中已定义的动画名。时长单位为 tick（`20` tick = 1 秒）。
+
+### Basic usage / 基础调用
+
+Activate a hitbox-window to trigger the throw on contact:
+通过激活碰撞箱伤害窗口，在命中时触发投技：
+
+```javascript
+function meleeAttack(a) {
+    var hitboxes = ["hdb_body", "hdb_head"];
+    for (var i in hitboxes) {
+        a.npc.activateHitboxDamage(hitboxes[i], 0, 40, 1.0, 1, 10, 0,
+            function(source, target) {
+                source.cancelAllHitboxDamageWindows();
+                source.startThrow(target, "attack_grab", 90, true, "ad", 5);
+            });
+    }
+}
+```
+
+### Static API with callbacks / 带回调的静态 API
+
+The static API accepts escape and finish callbacks:
+静态 API 额外接受**挣脱（Escape）**和**完成（Finish）**回调：
+
+```javascript
+var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
+
+function attack(e) {
+    var target = e.npc.getAttackTarget();
+    if (target == null || BossAPI.isThrowActive(target)) return;
+
+    BossAPI.startThrow(e.npc, target, "grab", 60, true, "ad", 5,
+        function(npc, player) { npc.say("挣脱了"); },
+        function(npc, player) { npc.say("投技结束"); });
+}
+```
+
+### Full signature / 完整签名
+
+```
+startThrow(npc, target, animation, durationTicks, returnToStart,
+           struggleMode, difficulty, onEscape, onFinish)
+```
+
+| Parameter | Description |
+|---|---|
+| `returnToStart` | `true` → teleport player back to the start position on finish/escape; `false` → keep the server-recorded end position / `true` 时将玩家送回起始位置；`false` 时保留结束位置 |
+| `struggleMode` | `none` / `ad` / `space` / `shift` (or numeric `0`–`3`, static API only) |
+| `difficulty` | Positive number / 正数 |
+| `onEscape`, `onFinish` | Callbacks with signature `(npc, player)`, fired only on normal completion / 仅在对应流程正常完成时触发 |
+
+### Utility methods / 实用方法
+
+```javascript
+BossAPI.stopThrow(target);       // Cancel and restore the player / 取消并恢复玩家状态
+BossAPI.isThrowActive(target);   // Check if a throw is in progress / 是否仍在投技中
+```
+
+### Struggle-mode pitfall / 挣扎模式注意事项
+
+Use `none`, `ad`, `space`, or `shift` for struggle modes. Numeric modes `0`–`3` are supported by the static API only. When calling the wrapper directly with two `null` callbacks, always pass a **string** mode to avoid Nashorn overload ambiguity.
+挣扎模式支持字符串 `none`、`ad`、`space`、`shift`，数字 `0`–`3` 仅限静态 API。直接使用包装器调用且回调为 `null` 时，**必须使用字符串**模式以避免 Nashorn 重载歧义。
+
+### Configuration / 配置
+
+Players are prevented from attacking while controlled by a throw by default. To allow attacks, edit `config/cnpc_immersiveboss-common.toml`:
+默认情况下玩家在投技期间无法攻击。如需允许攻击，修改配置文件：
+
+```toml
+[throw]
+disableTargetAttack = false
+```
+
+### Auto-cleanup / 自动清理
+
+NPC death, player disconnect, or dimension change will automatically clean up throw state. **These abnormal interruptions do NOT fire escape or finish callbacks** — plan your fallback (兜底) logic accordingly.
+NPC 死亡、玩家断开连接或切换维度时系统会自动清理投技状态。**这些异常中断不会触发挣脱或完成回调**，请据此设计兜底逻辑。
+
+---
+
+See [Scripting API](docs/wiki/Scripting-API.md) for all hitbox-window and throw signatures.
+完整碰撞箱窗口与投技方法签名请参阅 [Scripting API](docs/wiki/Scripting-API.md)。
+
+## 数据同步与服务端说明 / Data Sync & Server Notes
 
 模型碰撞箱定义由客户端资源管理器解析，因此资源包可以覆盖 `.geo.json`。客户端会在模型首次出现或模型变更时向服务端同步定义，并在渲染过程中同步实时动画 OBB 变换。服务端使用这些数据进行实体碰撞、脚本事件、弹射物判定和碰撞伤害。
 
@@ -782,7 +827,7 @@ e.npc.setRotationImmediate(90); // 忽略限制，立即转到 90 度
 - 模型更换后让客户端重新加载并渲染该 NPC；必要时使用 `F3+T` 重载资源包。
 - 不要把只存在于某个客户端的旧模型当作服务端权威配置。
 
-## 常见问题
+## 常见问题 / FAQ
 
 ### `F3+B` 看不到 OBB
 
@@ -824,7 +869,7 @@ e.npc.setRotationImmediate(90); // 忽略限制，立即转到 90 度
 - 颜色不带 `#`，例如红色填写 `FF4040`。
 - 路径使用 `modid:textures/...png`，不要填写 `assets/` 前缀。
 
-## 开发与构建
+## 开发与构建 / Development & Building
 
 项目使用 Gradle 8.8、ForgeGradle 和 Java 17。依赖 JAR 位于仓库的 `libs/`，这些文件是构建所需内容，不要删除或替换为旧版本。
 
@@ -872,34 +917,6 @@ Better Combat 和 Iron's Spellbooks 不是本模组的强制依赖。检测到�
 
 当前兼容代码按 Better Combat `1.9.0` 和 Iron's Spellbooks `1.20.1-3.16.2` 的开发环境进行适配；不同版本应在实际游戏中验证。
 
-## 投技脚本 / Throw scripts
-
-在 NPC 的 `init`、`tick` 或攻击脚本中调用静态 API。`target` 必须是玩家实体包装器，`animation` 是 NPC GeckoLib 动画名，时长单位为 tick（20 tick = 1 秒）：
-
-```javascript
-var BossAPI = Java.type("sweda.cnpc_immersiveboss.api.ImmersiveBossAPI");
-
-function attack(e) {
-    var target = e.npc.getAttackTarget();
-    if (target == null || BossAPI.isThrowActive(target)) return;
-
-    BossAPI.startThrow(e.npc, target, "grab", 60, true, "ad", 5,
-        function(npc, player) { npc.say("挣脱了"); },
-        function(npc, player) { npc.say("投技结束"); });
-}
-```
-
-完整签名为 `startThrow(npc, target, animation, durationTicks, returnToStart, struggleMode, difficulty, onEscape, onFinish)`。`returnToStart` 为 `true` 时在投技结束或挣脱后将玩家送回开始位置；为 `false` 时保留服务器记录的结束位置。`struggleMode` 可用 `none`、`ad`、`space`、`shift`，难度必须为正数。回调参数依次为 `(npc, player)`，仅在对应流程正常完成时执行。
-
-投技可随时取消或查询：
-
-```javascript
-BossAPI.stopThrow(target);       // 取消并恢复玩家状态
-BossAPI.isThrowActive(target);   // 是否仍在投技中
-```
-
-也可以直接从 `e.npc` 调用同名方法（见 [脚本 API](docs/wiki/Scripting-API.md)）。NPC 死亡、玩家退出或换维度会自动清理投技状态；这些情况不会触发完成或挣脱回调。
-
-## 许可证
+## 许可证 / License
 
 本项目使用 MIT 许可证。
