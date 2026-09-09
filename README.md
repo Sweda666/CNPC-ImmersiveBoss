@@ -18,7 +18,7 @@ movement disconnect during scripted throws.
 
 CNPC-ImmersiveBoss 是一个面向 CustomNPCs 与 CNPC Gecko Addon 的 Forge 模组。它为 GeckoLib NPC 模型提供可随骨骼动画旋转、移动的 OBB 多碰撞箱，并补充自定义 Boss 血条、分部位受伤、碰撞脚本事件和定时碰撞伤害 API。
 
-本文档对应当前源码版本 `0.3.11`。
+本文档对应当前源码版本 `0.5.8`。
 
 > 完整分主题教程见 [Wiki](docs/wiki/Home.md)：[安装与快速开始](docs/wiki/Installation-and-Quick-Start.md) · [碰撞箱建模](docs/wiki/Hitbox-Modeling.md) · [战斗与交互](docs/wiki/Combat-and-Interaction.md) · [自定义 Boss 血条](docs/wiki/Custom-Boss-Bar.md) · [脚本 API（含投技）](docs/wiki/Scripting-API.md) · [常见问题](docs/wiki/Troubleshooting.md)
 
