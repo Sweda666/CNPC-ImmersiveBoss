@@ -140,6 +140,18 @@ public final class ImmersiveBossAPI {
             struggleMode, difficulty, null, null);
     }
 
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, int struggleMode) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, struggleMode, 5);
+    }
+
+    public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
+                                     String animation, int durationTicks, int struggleMode,
+                                     int difficulty, boolean returnToStart) {
+        return startThrow(npcWrapper, targetWrapper, animation, durationTicks, struggleMode,
+            difficulty, returnToStart, null, null);
+    }
+
     /** Numeric form with callbacks: 0 none, 1 AD, 2 space, 3 shift. */
     public static boolean startThrow(ICustomNpc npcWrapper, IEntity targetWrapper,
                                      String animation, int durationTicks, int struggleMode,
